@@ -456,8 +456,184 @@ void check_files_for_merge() {
 
 //==================================== 3.2 ==============================
 
+// Helper functions for section management
+Elf32_Shdr* get_section_by_name(ElfFile* elf_file, const char* section_name) {
+    Elf32_Shdr* sections = (Elf32_Shdr*)((char*)elf_file->map_start + 
+                                        elf_file->elf_header->e_shoff);
+    
+    // Get string table for section names
+    const char* shstrtab = (char*)elf_file->map_start + 
+                          sections[elf_file->elf_header->e_shstrndx].sh_offset;
+    
+    for (int i = 0; i < elf_file->elf_header->e_shnum; i++) {
+        if (strcmp(shstrtab + sections[i].sh_name, section_name) == 0) {
+            return &sections[i];
+        }
+    }
+    return NULL;
+}
+
+// Write section data to output file
+off_t write_section_data(int out_fd, ElfFile* elf_file, Elf32_Shdr* section) {
+    off_t current_offset = lseek(out_fd, 0, SEEK_CUR);
+    
+    void* section_data = (char*)elf_file->map_start + section->sh_offset;
+    write(out_fd, section_data, section->sh_size);
+    
+    return current_offset;
+}
+
+// Merge two sections and write to output
+off_t merge_sections(int out_fd, ElfFile* file1, ElfFile* file2, 
+                    const char* section_name, Elf32_Shdr* new_section) {
+    Elf32_Shdr* section1 = get_section_by_name(file1, section_name);
+    Elf32_Shdr* section2 = get_section_by_name(file2, section_name);
+    
+    if (!section1) return -1;
+    
+    off_t new_offset = lseek(out_fd, 0, SEEK_CUR);
+    
+    // Write first file's section
+    write_section_data(out_fd, file1, section1);
+    
+    // Write second file's section if it exists
+    if (section2) {
+        write_section_data(out_fd, file2, section2);
+        new_section->sh_size = section1->sh_size + section2->sh_size;
+    } else {
+        new_section->sh_size = section1->sh_size;
+    }
+    
+    new_section->sh_offset = new_offset;
+    return new_offset;
+}
+
+
+// Validates whether files can be merged
+int can_merge_files() {
+    return validate_merge_requirements();
+}
+
+// Creates and initializes the output file, returns file descriptor or -1 on error
+int create_output_file() {
+    int out_fd = open("out.ro", O_RDWR | O_CREAT | O_TRUNC, 0644);
+    if (out_fd == -1) {
+        perror("Failed to create output file");
+    }
+    return out_fd;
+}
+
+// Copies and writes initial ELF header from first file
+int write_initial_header(int out_fd, Elf32_Ehdr* header) {
+    if (write(out_fd, header, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr)) {
+        perror("Failed to write ELF header");
+        return -1;
+    }
+    return 0;
+}
+
+// Creates initial section headers copy
+Elf32_Shdr* create_initial_sections(ElfFile* source_file) {
+    int num_sections = source_file->elf_header->e_shnum;
+    Elf32_Shdr* new_sections = malloc(sizeof(Elf32_Shdr) * num_sections);
+    if (!new_sections) {
+        perror("Failed to allocate memory for sections");
+        return NULL;
+    }
+    
+    memcpy(new_sections, 
+           (char*)source_file->map_start + source_file->elf_header->e_shoff, 
+           sizeof(Elf32_Shdr) * num_sections);
+    
+    return new_sections;
+}
+
+// Processes all mergeable sections
+int process_mergeable_sections(int out_fd, Elf32_Shdr* new_sections) {
+    const char* mergeable_sections[] = {".text", ".data", ".rodata"};
+    
+    for (int i = 0; i < 3; i++) {
+        if (debug_mode) {
+            printf("Merging section: %s\n", mergeable_sections[i]);
+        }
+        
+        Elf32_Shdr* section = get_section_by_name(&elf_files[0], mergeable_sections[i]);
+        if (section) {
+            off_t result = merge_sections(out_fd, &elf_files[0], &elf_files[1], 
+                                        mergeable_sections[i], section);
+            if (result == -1) {
+                printf("Failed to merge section: %s\n", mergeable_sections[i]);
+                return -1;
+            }
+        }
+    }
+    return 0;
+}
+
+// Writes final section header table and returns its offset
+off_t write_section_headers(int out_fd, Elf32_Shdr* new_sections, int num_sections) {
+    off_t section_header_offset = lseek(out_fd, 0, SEEK_CUR);
+    if (write(out_fd, new_sections, sizeof(Elf32_Shdr) * num_sections) != 
+        sizeof(Elf32_Shdr) * num_sections) {
+        return -1;
+    }
+    return section_header_offset;
+}
+
+// Updates ELF header with final section header offset
+int update_elf_header(int out_fd, Elf32_Ehdr* header, off_t section_offset) {
+    header->e_shoff = section_offset;
+    if (lseek(out_fd, 0, SEEK_SET) == -1) return -1;
+    if (write(out_fd, header, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr)) return -1;
+    return 0;
+}
+
+// Main merge function that orchestrates the entire process
 void merge_elf_files() {
-    printf("Not implemented yet\n");
+    if (!can_merge_files()) {
+        printf("Cannot merge files: validation failed\n");
+        return;
+    }
+
+    int out_fd = create_output_file();
+    if (out_fd == -1) return;
+
+    // Copy initial ELF header
+    Elf32_Ehdr new_header = *(elf_files[0].elf_header);
+    if (write_initial_header(out_fd, &new_header) != 0) {
+        close(out_fd);
+        return;
+    }
+
+    // Create section headers
+    Elf32_Shdr* new_sections = create_initial_sections(&elf_files[0]);
+    if (!new_sections) {
+        close(out_fd);
+        return;
+    }
+
+    // Process sections
+    if (process_mergeable_sections(out_fd, new_sections) != 0) {
+        free(new_sections);
+        close(out_fd);
+        return;
+    }
+
+    // Write and update headers
+    off_t section_offset = write_section_headers(out_fd, new_sections, 
+                                               elf_files[0].elf_header->e_shnum);
+    if (section_offset == -1 || 
+        update_elf_header(out_fd, &new_header, section_offset) != 0) {
+        printf("Failed to update headers\n");
+        free(new_sections);
+        close(out_fd);
+        return;
+    }
+
+    // Cleanup
+    free(new_sections);
+    close(out_fd);
+    printf("Merged ELF files successfully\n");
 }
 
 //============================= close ===========================================
