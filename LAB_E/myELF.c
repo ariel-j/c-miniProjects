@@ -330,10 +330,15 @@ void print_symbols() {
 
 //==================================== 3.1 ==============================
 
-// Validates basic requirements for merging
+// Helper function to check if a symbol is global
+int is_symbol_global(Elf32_Sym* sym) {
+    return ELF32_ST_BIND(sym->st_info) == STB_GLOBAL;
+}
+
+// Validates that we have exactly 2 files with 1 symbol table each
 int validate_merge_requirements() {
     if (file_count != 2) {
-        printf("Error: Exactly two ELF files must be opened for merge check\n");
+        printf("Error: Must have exactly 2 files\n");
         return 0;
     }
 
@@ -351,8 +356,7 @@ int validate_merge_requirements() {
         }
         
         if (symtab_count != 1) {
-            printf("Error: Feature not supported - File %d has %d symbol tables\n", 
-                   i + 1, symtab_count);
+            printf("Feature not supported\n");
             return 0;
         }
     }
@@ -372,10 +376,11 @@ Elf32_Shdr* find_symbol_table_section(ElfFile* elf_file) {
     return NULL;
 }
 
-// Finds a symbol in a symbol table
+// Finds a symbol in a symbol table (only global symbols)
 Elf32_Sym* find_symbol_in_table(const char* symbol_name, Elf32_Sym* symtab, 
                                int sym_count, const char* strtab) {
-    for (int i = 1; i < sym_count; i++) { // Skip dummy symbol
+    for (int i = 1; i < sym_count; i++) {
+        if (!is_symbol_global(&symtab[i])) continue;
         const char* curr_name = strtab + symtab[i].st_name;
         if (strcmp(symbol_name, curr_name) == 0) {
             return &symtab[i];
@@ -386,91 +391,53 @@ Elf32_Sym* find_symbol_in_table(const char* symbol_name, Elf32_Sym* symtab,
 
 // Checks for symbol conflicts between two files
 void check_symbol_conflicts(ElfFile* curr_file, ElfFile* other_file) {
-    // Get sections for current file
+    // Get current file's symbol table and string table
     Elf32_Shdr* curr_sections = (Elf32_Shdr*)((char*)curr_file->map_start + 
                                              curr_file->elf_header->e_shoff);
-    
-    // Find symbol table section for current file
     Elf32_Shdr* curr_symtab_section = find_symbol_table_section(curr_file);
-    if (!curr_symtab_section) {
-        printf("Error: Could not find symbol table\n");
-        return;
-    }
+    if (!curr_symtab_section) return;
 
-    // Get string table for current file
     Elf32_Shdr* curr_strtab = &curr_sections[curr_symtab_section->sh_link];
     const char* curr_strtab_data = (char*)curr_file->map_start + curr_strtab->sh_offset;
-    
-    // Get symbols from current file
     Elf32_Sym* curr_symbols = (Elf32_Sym*)((char*)curr_file->map_start + 
                                           curr_symtab_section->sh_offset);
     int curr_sym_count = curr_symtab_section->sh_size / sizeof(Elf32_Sym);
 
-    // Get sections for other file
+    // Get other file's symbol table and string table
     Elf32_Shdr* other_sections = (Elf32_Shdr*)((char*)other_file->map_start + 
                                               other_file->elf_header->e_shoff);
-    
-    // Find symbol table section for other file
     Elf32_Shdr* other_symtab_section = find_symbol_table_section(other_file);
-    if (!other_symtab_section) {
-        printf("Error: Could not find symbol table in other file\n");
-        return;
-    }
+    if (!other_symtab_section) return;
 
-    // Get string table for other file
     Elf32_Shdr* other_strtab = &other_sections[other_symtab_section->sh_link];
     const char* other_strtab_data = (char*)other_file->map_start + other_strtab->sh_offset;
-    
-    // Get symbols from other file
     Elf32_Sym* other_symbols = (Elf32_Sym*)((char*)other_file->map_start + 
                                            other_symtab_section->sh_offset);
     int other_sym_count = other_symtab_section->sh_size / sizeof(Elf32_Sym);
 
-    if (debug_mode) {
-        printf("\nChecking symbols between files\n");
-        printf("Current file symbol count: %d\n", curr_sym_count);
-        printf("Other file symbol count: %d\n", other_sym_count);
-    }
-
-    // Check each symbol in current file
-    for (int i = 1; i < curr_sym_count; i++) { // Skip dummy symbol
+    // Process each symbol (skip symbol 0)
+    for (int i = 1; i < curr_sym_count; i++) {
         Elf32_Sym* curr_sym = &curr_symbols[i];
         
-        // Skip symbols with no name or empty name
-        if (curr_sym->st_name == 0) {
-            continue;
-        }
+        // Skip non-global and unnamed symbols
+        if (!is_symbol_global(curr_sym) || curr_sym->st_name == 0) continue;
         
         const char* sym_name = curr_strtab_data + curr_sym->st_name;
-        if (sym_name[0] == '\0') {
-            continue;
-        }
-        
-        if (debug_mode) {
-            printf("Checking symbol: %s (index: %d, section: %d)\n", 
-                   sym_name, i, curr_sym->st_shndx);
-        }
+        if (sym_name[0] == '\0') continue;
 
-        // Filter out special sections
-        if (curr_sym->st_shndx == SHN_ABS || curr_sym->st_shndx == SHN_COMMON) {
-            continue;
-        }
+        // Find this symbol in other file
+        Elf32_Sym* other_sym = find_symbol_in_table(sym_name, other_symbols, 
+                                                   other_sym_count, other_strtab_data);
 
         if (curr_sym->st_shndx == SHN_UNDEF) {
-            // Symbol is undefined in current file, check other file
-            Elf32_Sym* other_sym = find_symbol_in_table(sym_name, other_symbols, 
-                                                      other_sym_count, other_strtab_data);
-            
+            // Symbol is undefined in current file
             if (!other_sym || other_sym->st_shndx == SHN_UNDEF) {
-                printf("Symbol '%s' undefined\n", sym_name);
+                printf("Symbol %s undefined\n", sym_name);
             }
         } else {
-            // Symbol is defined in current file, check for multiple definitions
-            Elf32_Sym* other_sym = find_symbol_in_table(sym_name, other_symbols, 
-                                                      other_sym_count, other_strtab_data);
-            
+            // Symbol is defined in current file
             if (other_sym && other_sym->st_shndx != SHN_UNDEF) {
-                printf("Symbol '%s' multiply defined\n", sym_name);
+                printf("Symbol %s multiply defined\n", sym_name);
             }
         }
     }
@@ -482,15 +449,10 @@ void check_files_for_merge() {
         return;
     }
 
-    if (debug_mode) {
-        printf("\nDebug: Starting symbol conflict check\n");
-    }
-
     // Check symbols in both directions
     check_symbol_conflicts(&elf_files[0], &elf_files[1]);
     check_symbol_conflicts(&elf_files[1], &elf_files[0]);
 }
-
 
 //==================================== 3.2 ==============================
 
