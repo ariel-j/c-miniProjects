@@ -520,18 +520,52 @@ int copy_non_mergeable_sections(int out_fd, Elf32_Shdr* new_sections) {
     const char* non_mergeable_sections[] = {".shstrtab", ".symtab"};
     int num_sections = 2;
     
+    if (debug_mode) {
+        printf("\nCopying non-mergeable sections at new_sections: %p\n", (void*)new_sections);
+    }
+    
     for (int i = 0; i < num_sections; i++) {
         if (debug_mode) {
             printf("Copying non-mergeable section: %s\n", non_mergeable_sections[i]);
         }
         
-        Elf32_Shdr* section = get_section_by_name(&elf_files[0], non_mergeable_sections[i]);
-        if (section) {
-            off_t new_offset = write_section_data(out_fd, &elf_files[0], section);
+        // Get ORIGINAL section to find its index
+        Elf32_Shdr* orig_section = get_section_by_name(&elf_files[0], non_mergeable_sections[i]);
+        if (orig_section) {
+            // Calculate the index
+            Elf32_Shdr* first_section = (Elf32_Shdr*)((char*)elf_files[0].map_start + 
+                                                     elf_files[0].elf_header->e_shoff);
+            size_t section_index = (orig_section - first_section);
+            
+            if (debug_mode) {
+                printf("Found section at index: %zu\n", section_index);
+                printf("Using new_sections + %zu\n", section_index);
+            }
+            
+            // Use the index with our new_sections array
+            Elf32_Shdr* new_section = &new_sections[section_index];
+            
+            // Write section data and update offset
+            off_t new_offset = write_section_data(out_fd, &elf_files[0], orig_section);
             if (new_offset == -1) {
+                printf("Failed to copy section: %s\n", non_mergeable_sections[i]);
                 return -1;
             }
-            section->sh_offset = new_offset;
+
+            if (debug_mode) {
+                printf("Successfully wrote section at offset: 0x%lx\n", new_offset);
+                printf("Original section size: %d\n", orig_section->sh_size);
+            }
+
+            // Update new section header
+            new_section->sh_offset = new_offset;
+            new_section->sh_size = orig_section->sh_size;
+
+            if (debug_mode) {
+                printf("Updated section header:\n");
+                printf("- New offset: 0x%x\n", (unsigned int)new_section->sh_offset);
+                printf("- Size: %d\n", new_section->sh_size);
+            }
         }
     }
     return 0;
@@ -619,9 +653,24 @@ int process_mergeable_sections(int out_fd, Elf32_Shdr* new_sections) {
 }
 
 // Updates symbol values from second file
-int update_symbol_values(Elf32_Shdr* symtab1, Elf32_Shdr* symtab2) {
-    Elf32_Sym* symbols1 = (Elf32_Sym*)((char*)elf_files[0].map_start + symtab1->sh_offset);
-    Elf32_Sym* symbols2 = (Elf32_Sym*)((char*)elf_files[1].map_start + symtab2->sh_offset);
+int update_symbol_values(int out_fd, Elf32_Shdr* symtab1, Elf32_Shdr* symtab2) {
+    // Get source symbol tables
+    Elf32_Sym* source_symbols1 = (Elf32_Sym*)((char*)elf_files[0].map_start + symtab1->sh_offset);
+    Elf32_Sym* source_symbols2 = (Elf32_Sym*)((char*)elf_files[1].map_start + symtab2->sh_offset);
+    
+    // Create a copy of symbol table 1
+    int sym_count = symtab1->sh_size / sizeof(Elf32_Sym);
+    Elf32_Sym* new_symbols = malloc(symtab1->sh_size);
+    if (!new_symbols) {
+        return -1;
+    }
+    memcpy(new_symbols, source_symbols1, symtab1->sh_size);
+    
+    if (debug_mode) {
+        printf("Updating symbol table:\n");
+        printf("- Symbol count: %d\n", sym_count);
+        printf("- Table size: %d bytes\n", symtab1->sh_size);
+    }
     
     // Get string tables
     Elf32_Shdr* strtab1 = &((Elf32_Shdr*)((char*)elf_files[0].map_start + 
@@ -632,35 +681,77 @@ int update_symbol_values(Elf32_Shdr* symtab1, Elf32_Shdr* symtab2) {
     const char* strtab1_data = (char*)elf_files[0].map_start + strtab1->sh_offset;
     const char* strtab2_data = (char*)elf_files[1].map_start + strtab2->sh_offset;
     
-    int sym_count1 = symtab1->sh_size / sizeof(Elf32_Sym);
-    
     // Update undefined symbols
-    for (int i = 1; i < sym_count1; i++) {
-        if (symbols1[i].st_shndx != SHN_UNDEF) continue;
+    for (int i = 1; i < sym_count; i++) {
+        if (new_symbols[i].st_shndx != SHN_UNDEF) continue;
         
-        const char* sym_name = strtab1_data + symbols1[i].st_name;
-        Elf32_Sym* sym2 = find_symbol_in_table(sym_name, symbols2, 
+        const char* sym_name = strtab1_data + new_symbols[i].st_name;
+        Elf32_Sym* sym2 = find_symbol_in_table(sym_name, source_symbols2, 
                                               symtab2->sh_size / sizeof(Elf32_Sym), 
                                               strtab2_data);
         
         if (sym2 && sym2->st_shndx != SHN_UNDEF) {
-            symbols1[i].st_value = sym2->st_value;
-            symbols1[i].st_size = sym2->st_size;
-            symbols1[i].st_info = sym2->st_info;
-            symbols1[i].st_shndx = sym2->st_shndx;
+            if (debug_mode) {
+                printf("Updating symbol %s:\n", sym_name);
+                printf("- Old value: 0x%x\n", new_symbols[i].st_value);
+                printf("- New value: 0x%x\n", sym2->st_value);
+            }
+            
+            new_symbols[i].st_value = sym2->st_value;
+            new_symbols[i].st_size = sym2->st_size;
+            new_symbols[i].st_info = sym2->st_info;
+            new_symbols[i].st_shndx = sym2->st_shndx;
         }
     }
+    
+    // Write updated symbol table to output file
+    ssize_t written = write(out_fd, new_symbols, symtab1->sh_size);
+    if (written != symtab1->sh_size) {
+        printf("Failed to write symbol table\n");
+        free(new_symbols);
+        return -1;
+    }
+    
+    if (debug_mode) {
+        printf("Successfully wrote updated symbol table\n");
+    }
+    
+    free(new_symbols);
     return 0;
 }
 
 // Writes section headers and returns offset
 off_t write_section_headers(int out_fd, Elf32_Shdr* new_sections, int num_sections) {
-    off_t section_header_offset = lseek(out_fd, 0, SEEK_CUR);
-    if (write(out_fd, new_sections, sizeof(Elf32_Shdr) * num_sections) != 
-        sizeof(Elf32_Shdr) * num_sections) {
+    if (debug_mode) {
+        printf("\nWriting section headers:\n");
+        printf("- Number of sections: %d\n", num_sections);
+        printf("- Size of each section header: %zu\n", sizeof(Elf32_Shdr));
+        printf("- Total size to write: %zu\n", sizeof(Elf32_Shdr) * num_sections);
+    }
+
+    // Make sure we're aligned
+    off_t current = lseek(out_fd, 0, SEEK_CUR);
+    if (current == -1) {
+        perror("Failed to get current offset");
         return -1;
     }
-    return section_header_offset;
+
+    if (debug_mode) {
+        printf("Current file offset before write: 0x%lx\n", current);
+    }
+
+    // Write the section headers
+    ssize_t written = write(out_fd, new_sections, sizeof(Elf32_Shdr) * num_sections);
+    if (written != sizeof(Elf32_Shdr) * num_sections) {
+        perror("Failed to write section headers");
+        return -1;
+    }
+
+    if (debug_mode) {
+        printf("Successfully wrote %zd bytes of section headers\n", written);
+    }
+
+    return current;
 }
 
 // Updates ELF header
@@ -714,8 +805,13 @@ void merge_elf_files() {
     Elf32_Shdr* symtab1 = find_symbol_table_section(&elf_files[0]);
     Elf32_Shdr* symtab2 = find_symbol_table_section(&elf_files[1]);
     if (symtab1 && symtab2) {
-        update_symbol_values(symtab1, symtab2);
+    if (update_symbol_values(out_fd, symtab1, symtab2) != 0) {
+        printf("Failed to update symbol values\n");
+        free(new_sections);
+        close(out_fd);
+        return;
     }
+}
 
     // Step 8: Write final section headers and update ELF header
     off_t section_offset = write_section_headers(out_fd, new_sections, 

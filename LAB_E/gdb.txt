@@ -309,3 +309,131 @@ The program no longer exists.
 Undefined command: "disessemble".  Try "help".
 No stack.
 No frame selected.
+Breakpoint 1 at 0x2cd9: file myELF.c, line 692.
+Breakpoint 2 at 0x2e83: file myELF.c, line 733.
+Starting program: /home/arieljay/C/LAB_E/myELF 
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+
+Breakpoint 2, merge_elf_files () at myELF.c:733
+733	void merge_elf_files() {
+$1 = (Elf32_Shdr *) 0xffffa518
+Continuing.
+
+Program received signal SIGSEGV, Segmentation fault.
+get_section_by_name (elf_file=0x5655c0b0 <elf_files+16>, section_name=0x56559623 ".text") at myELF.c:464
+464	                                        elf_file->elf_header->e_shoff);
+#0  get_section_by_name (elf_file=0x5655c0b0 <elf_files+16>, section_name=0x56559623 ".text") at myELF.c:464
+#1  0x5655756c in merge_sections (out_fd=4, file1=0x5655c0a0 <elf_files>, file2=0x5655c0b0 <elf_files+16>, section_name=0x56559623 ".text", new_section=0x5655db28) at myELF.c:497
+#2  0x56557adc in process_mergeable_sections (out_fd=4, new_sections=0x5655db00) at myELF.c:644
+#3  0x56557f73 in merge_elf_files () at myELF.c:758
+#4  0x56558349 in main () at myELF.c:867
+Dump of assembler code for function get_section_by_name:
+   0x5655740a <+0>:	push   %ebp
+   0x5655740b <+1>:	mov    %esp,%ebp
+   0x5655740d <+3>:	push   %ebx
+   0x5655740e <+4>:	sub    $0x14,%esp
+   0x56557411 <+7>:	call   0x56556220 <__x86.get_pc_thunk.bx>
+   0x56557416 <+12>:	add    $0x4b5a,%ebx
+   0x5655741c <+18>:	mov    0x8(%ebp),%eax
+   0x5655741f <+21>:	mov    0x4(%eax),%edx
+   0x56557422 <+24>:	mov    0x8(%ebp),%eax
+   0x56557425 <+27>:	mov    0xc(%eax),%eax
+=> 0x56557428 <+30>:	mov    0x20(%eax),%eax
+   0x5655742b <+33>:	add    %edx,%eax
+   0x5655742d <+35>:	mov    %eax,-0x10(%ebp)
+   0x56557430 <+38>:	mov    0x8(%ebp),%eax
+   0x56557433 <+41>:	mov    0x4(%eax),%ecx
+   0x56557436 <+44>:	mov    0x8(%ebp),%eax
+   0x56557439 <+47>:	mov    0xc(%eax),%eax
+   0x5655743c <+50>:	movzwl 0x32(%eax),%eax
+   0x56557440 <+54>:	movzwl %ax,%edx
+   0x56557443 <+57>:	mov    %edx,%eax
+   0x56557445 <+59>:	shl    $0x2,%eax
+   0x56557448 <+62>:	add    %edx,%eax
+   0x5655744a <+64>:	shl    $0x3,%eax
+   0x5655744d <+67>:	mov    %eax,%edx
+   0x5655744f <+69>:	mov    -0x10(%ebp),%eax
+   0x56557452 <+72>:	add    %edx,%eax
+   0x56557454 <+74>:	mov    0x10(%eax),%eax
+   0x56557457 <+77>:	add    %ecx,%eax
+   0x56557459 <+79>:	mov    %eax,-0xc(%ebp)
+   0x5655745c <+82>:	movl   $0x0,-0x14(%ebp)
+   0x56557463 <+89>:	jmp    0x565574ad <get_section_by_name+163>
+   0x56557465 <+91>:	mov    -0x14(%ebp),%edx
+   0x56557468 <+94>:	mov    %edx,%eax
+   0x5655746a <+96>:	shl    $0x2,%eax
+   0x5655746d <+99>:	add    %edx,%eax
+   0x5655746f <+101>:	shl    $0x3,%eax
+   0x56557472 <+104>:	mov    %eax,%edx
+   0x56557474 <+106>:	mov    -0x10(%ebp),%eax
+   0x56557477 <+109>:	add    %edx,%eax
+   0x56557479 <+111>:	mov    (%eax),%edx
+   0x5655747b <+113>:	mov    -0xc(%ebp),%eax
+   0x5655747e <+116>:	add    %edx,%eax
+   0x56557480 <+118>:	sub    $0x8,%esp
+   0x56557483 <+121>:	push   0xc(%ebp)
+   0x56557486 <+124>:	push   %eax
+   0x56557487 <+125>:	call   0x56556040 <strcmp@plt>
+   0x5655748c <+130>:	add    $0x10,%esp
+   0x5655748f <+133>:	test   %eax,%eax
+   0x56557491 <+135>:	jne    0x565574a9 <get_section_by_name+159>
+   0x56557493 <+137>:	mov    -0x14(%ebp),%edx
+   0x56557496 <+140>:	mov    %edx,%eax
+   0x56557498 <+142>:	shl    $0x2,%eax
+   0x5655749b <+145>:	add    %edx,%eax
+   0x5655749d <+147>:	shl    $0x3,%eax
+   0x565574a0 <+150>:	mov    %eax,%edx
+   0x565574a2 <+152>:	mov    -0x10(%ebp),%eax
+   0x565574a5 <+155>:	add    %edx,%eax
+   0x565574a7 <+157>:	jmp    0x565574c4 <get_section_by_name+186>
+   0x565574a9 <+159>:	addl   $0x1,-0x14(%ebp)
+   0x565574ad <+163>:	mov    0x8(%ebp),%eax
+   0x565574b0 <+166>:	mov    0xc(%eax),%eax
+   0x565574b3 <+169>:	movzwl 0x30(%eax),%eax
+   0x565574b7 <+173>:	movzwl %ax,%eax
+   0x565574ba <+176>:	cmp    %eax,-0x14(%ebp)
+   0x565574bd <+179>:	jl     0x56557465 <get_section_by_name+91>
+   0x565574bf <+181>:	mov    $0x0,%eax
+   0x565574c4 <+186>:	mov    -0x4(%ebp),%ebx
+   0x565574c7 <+189>:	leave  
+   0x565574c8 <+190>:	ret    
+End of assembler dump.
+Breakpoint 3 at 0x56556592: file myELF.c, line 117.
+Starting program: /home/arieljay/C/LAB_E/myELF 
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+
+Breakpoint 3, examine_elf_file () at myELF.c:117
+117	void examine_elf_file() {
+Undefined command: "F1a.o".  Try "help".
+Continuing.
+
+Breakpoint 3, examine_elf_file () at myELF.c:117
+117	void examine_elf_file() {
+Continuing.
+
+Breakpoint 2, merge_elf_files () at myELF.c:733
+733	void merge_elf_files() {
+Starting program: /home/arieljay/C/LAB_E/myELF 
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+
+Breakpoint 3, examine_elf_file () at myELF.c:117
+117	void examine_elf_file() {
+Continuing.
+
+Breakpoint 3, examine_elf_file () at myELF.c:117
+117	void examine_elf_file() {
+$2 = 1
+$3 = {fd = 3, map_start = 0xf7fbd000, file_size = 1072, elf_header = 0xf7fbd000}
+Continuing.
+
+Breakpoint 2, merge_elf_files () at myELF.c:733
+733	void merge_elf_files() {
+$4 = (Elf32_Shdr *) 0xffffa518
+Continuing.
+
+Program received signal SIGSEGV, Segmentation fault.
+update_symbol_values (symtab1=0xf7fbd108, symtab2=0xf7fbc108) at myELF.c:681
+681	            symbols1[i].st_value = sym2->st_value;
