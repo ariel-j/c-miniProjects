@@ -456,15 +456,18 @@ void check_files_for_merge() {
 
 //==================================== 3.2 ==============================
 
-// Helper functions for section management
+// ===== Section Management Helper Functions =====
+
+// Finds a section by its name in an ELF file
 Elf32_Shdr* get_section_by_name(ElfFile* elf_file, const char* section_name) {
     Elf32_Shdr* sections = (Elf32_Shdr*)((char*)elf_file->map_start + 
                                         elf_file->elf_header->e_shoff);
     
-    // Get string table for section names
+    // Get section names string table
     const char* shstrtab = (char*)elf_file->map_start + 
                           sections[elf_file->elf_header->e_shstrndx].sh_offset;
     
+    // Search for section by name
     for (int i = 0; i < elf_file->elf_header->e_shnum; i++) {
         if (strcmp(shstrtab + sections[i].sh_name, section_name) == 0) {
             return &sections[i];
@@ -473,17 +476,21 @@ Elf32_Shdr* get_section_by_name(ElfFile* elf_file, const char* section_name) {
     return NULL;
 }
 
-// Write section data to output file
+// Writes section data to output file and returns offset where written
 off_t write_section_data(int out_fd, ElfFile* elf_file, Elf32_Shdr* section) {
     off_t current_offset = lseek(out_fd, 0, SEEK_CUR);
     
     void* section_data = (char*)elf_file->map_start + section->sh_offset;
-    write(out_fd, section_data, section->sh_size);
+    ssize_t written = write(out_fd, section_data, section->sh_size);
+    
+    if (written != section->sh_size) {
+        return -1;
+    }
     
     return current_offset;
 }
 
-// Merge two sections and write to output
+// Merges corresponding sections from both files
 off_t merge_sections(int out_fd, ElfFile* file1, ElfFile* file2, 
                     const char* section_name, Elf32_Shdr* new_section) {
     Elf32_Shdr* section1 = get_section_by_name(file1, section_name);
@@ -494,11 +501,11 @@ off_t merge_sections(int out_fd, ElfFile* file1, ElfFile* file2,
     off_t new_offset = lseek(out_fd, 0, SEEK_CUR);
     
     // Write first file's section
-    write_section_data(out_fd, file1, section1);
+    if (write_section_data(out_fd, file1, section1) == -1) return -1;
     
     // Write second file's section if it exists
     if (section2) {
-        write_section_data(out_fd, file2, section2);
+        if (write_section_data(out_fd, file2, section2) == -1) return -1;
         new_section->sh_size = section1->sh_size + section2->sh_size;
     } else {
         new_section->sh_size = section1->sh_size;
@@ -508,13 +515,36 @@ off_t merge_sections(int out_fd, ElfFile* file1, ElfFile* file2,
     return new_offset;
 }
 
+// Copies non-mergeable sections from first file
+int copy_non_mergeable_sections(int out_fd, Elf32_Shdr* new_sections) {
+    const char* non_mergeable_sections[] = {".shstrtab", ".symtab"};
+    int num_sections = 2;
+    
+    for (int i = 0; i < num_sections; i++) {
+        if (debug_mode) {
+            printf("Copying non-mergeable section: %s\n", non_mergeable_sections[i]);
+        }
+        
+        Elf32_Shdr* section = get_section_by_name(&elf_files[0], non_mergeable_sections[i]);
+        if (section) {
+            off_t new_offset = write_section_data(out_fd, &elf_files[0], section);
+            if (new_offset == -1) {
+                return -1;
+            }
+            section->sh_offset = new_offset;
+        }
+    }
+    return 0;
+}
 
-// Validates whether files can be merged
+// ===== Merge Support Functions =====
+
+// Validates merge possibility
 int can_merge_files() {
     return validate_merge_requirements();
 }
 
-// Creates and initializes the output file, returns file descriptor or -1 on error
+// Creates output file
 int create_output_file() {
     int out_fd = open("out.ro", O_RDWR | O_CREAT | O_TRUNC, 0644);
     if (out_fd == -1) {
@@ -523,7 +553,7 @@ int create_output_file() {
     return out_fd;
 }
 
-// Copies and writes initial ELF header from first file
+// Writes initial ELF header
 int write_initial_header(int out_fd, Elf32_Ehdr* header) {
     if (write(out_fd, header, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr)) {
         perror("Failed to write ELF header");
@@ -532,7 +562,7 @@ int write_initial_header(int out_fd, Elf32_Ehdr* header) {
     return 0;
 }
 
-// Creates initial section headers copy
+// Creates initial section headers
 Elf32_Shdr* create_initial_sections(ElfFile* source_file) {
     int num_sections = source_file->elf_header->e_shnum;
     Elf32_Shdr* new_sections = malloc(sizeof(Elf32_Shdr) * num_sections);
@@ -548,19 +578,37 @@ Elf32_Shdr* create_initial_sections(ElfFile* source_file) {
     return new_sections;
 }
 
-// Processes all mergeable sections
+// Processes mergeable sections (.text, .data, .rodata)
 int process_mergeable_sections(int out_fd, Elf32_Shdr* new_sections) {
     const char* mergeable_sections[] = {".text", ".data", ".rodata"};
     
+    if (debug_mode) {
+        printf("\nProcessing mergeable sections, new_sections at %p\n", (void*)new_sections);
+    }
+    
     for (int i = 0; i < 3; i++) {
         if (debug_mode) {
-            printf("Merging section: %s\n", mergeable_sections[i]);
+            printf("\nProcessing mergeable section %d: %s\n", i, mergeable_sections[i]);
         }
         
-        Elf32_Shdr* section = get_section_by_name(&elf_files[0], mergeable_sections[i]);
-        if (section) {
+        // Get ORIGINAL section just to find its index
+        Elf32_Shdr* orig_section = get_section_by_name(&elf_files[0], mergeable_sections[i]);
+        if (orig_section) {
+            // Calculate the index
+            Elf32_Shdr* first_section = (Elf32_Shdr*)((char*)elf_files[0].map_start + 
+                                                     elf_files[0].elf_header->e_shoff);
+            size_t section_index = (orig_section - first_section);
+            
+            if (debug_mode) {
+                printf("Found section at index: %zu\n", section_index);
+                printf("Using new_sections + %zu\n", section_index);
+            }
+            
+            // Use the index with our new_sections array
+            Elf32_Shdr* new_section = &new_sections[section_index];
+            
             off_t result = merge_sections(out_fd, &elf_files[0], &elf_files[1], 
-                                        mergeable_sections[i], section);
+                                        mergeable_sections[i], new_section);
             if (result == -1) {
                 printf("Failed to merge section: %s\n", mergeable_sections[i]);
                 return -1;
@@ -570,7 +618,42 @@ int process_mergeable_sections(int out_fd, Elf32_Shdr* new_sections) {
     return 0;
 }
 
-// Writes final section header table and returns its offset
+// Updates symbol values from second file
+int update_symbol_values(Elf32_Shdr* symtab1, Elf32_Shdr* symtab2) {
+    Elf32_Sym* symbols1 = (Elf32_Sym*)((char*)elf_files[0].map_start + symtab1->sh_offset);
+    Elf32_Sym* symbols2 = (Elf32_Sym*)((char*)elf_files[1].map_start + symtab2->sh_offset);
+    
+    // Get string tables
+    Elf32_Shdr* strtab1 = &((Elf32_Shdr*)((char*)elf_files[0].map_start + 
+                           elf_files[0].elf_header->e_shoff))[symtab1->sh_link];
+    Elf32_Shdr* strtab2 = &((Elf32_Shdr*)((char*)elf_files[1].map_start + 
+                           elf_files[1].elf_header->e_shoff))[symtab2->sh_link];
+    
+    const char* strtab1_data = (char*)elf_files[0].map_start + strtab1->sh_offset;
+    const char* strtab2_data = (char*)elf_files[1].map_start + strtab2->sh_offset;
+    
+    int sym_count1 = symtab1->sh_size / sizeof(Elf32_Sym);
+    
+    // Update undefined symbols
+    for (int i = 1; i < sym_count1; i++) {
+        if (symbols1[i].st_shndx != SHN_UNDEF) continue;
+        
+        const char* sym_name = strtab1_data + symbols1[i].st_name;
+        Elf32_Sym* sym2 = find_symbol_in_table(sym_name, symbols2, 
+                                              symtab2->sh_size / sizeof(Elf32_Sym), 
+                                              strtab2_data);
+        
+        if (sym2 && sym2->st_shndx != SHN_UNDEF) {
+            symbols1[i].st_value = sym2->st_value;
+            symbols1[i].st_size = sym2->st_size;
+            symbols1[i].st_info = sym2->st_info;
+            symbols1[i].st_shndx = sym2->st_shndx;
+        }
+    }
+    return 0;
+}
+
+// Writes section headers and returns offset
 off_t write_section_headers(int out_fd, Elf32_Shdr* new_sections, int num_sections) {
     off_t section_header_offset = lseek(out_fd, 0, SEEK_CUR);
     if (write(out_fd, new_sections, sizeof(Elf32_Shdr) * num_sections) != 
@@ -580,7 +663,7 @@ off_t write_section_headers(int out_fd, Elf32_Shdr* new_sections, int num_sectio
     return section_header_offset;
 }
 
-// Updates ELF header with final section header offset
+// Updates ELF header
 int update_elf_header(int out_fd, Elf32_Ehdr* header, off_t section_offset) {
     header->e_shoff = section_offset;
     if (lseek(out_fd, 0, SEEK_SET) == -1) return -1;
@@ -588,38 +671,53 @@ int update_elf_header(int out_fd, Elf32_Ehdr* header, off_t section_offset) {
     return 0;
 }
 
-// Main merge function that orchestrates the entire process
+// Main merge function
 void merge_elf_files() {
+    // Step 1: Validation (allowing merge even if validation fails)
     if (!can_merge_files()) {
-        printf("Cannot merge files: validation failed\n");
-        return;
+        printf("Warning: Merge validation failed! Continuing anyway as per requirements...\n");
     }
-
+    
+    // Step 2: Create output file
     int out_fd = create_output_file();
     if (out_fd == -1) return;
 
-    // Copy initial ELF header
+    // Step 3: Copy and setup initial ELF header
     Elf32_Ehdr new_header = *(elf_files[0].elf_header);
     if (write_initial_header(out_fd, &new_header) != 0) {
         close(out_fd);
         return;
     }
 
-    // Create section headers
+    // Step 4: Create initial section headers
     Elf32_Shdr* new_sections = create_initial_sections(&elf_files[0]);
     if (!new_sections) {
         close(out_fd);
         return;
     }
 
-    // Process sections
+    // Step 5: Process mergeable sections
     if (process_mergeable_sections(out_fd, new_sections) != 0) {
         free(new_sections);
         close(out_fd);
         return;
     }
 
-    // Write and update headers
+    // Step 6: Copy non-mergeable sections
+    if (copy_non_mergeable_sections(out_fd, new_sections) != 0) {
+        free(new_sections);
+        close(out_fd);
+        return;
+    }
+
+    // Step 7: Update symbol values
+    Elf32_Shdr* symtab1 = find_symbol_table_section(&elf_files[0]);
+    Elf32_Shdr* symtab2 = find_symbol_table_section(&elf_files[1]);
+    if (symtab1 && symtab2) {
+        update_symbol_values(symtab1, symtab2);
+    }
+
+    // Step 8: Write final section headers and update ELF header
     off_t section_offset = write_section_headers(out_fd, new_sections, 
                                                elf_files[0].elf_header->e_shnum);
     if (section_offset == -1 || 
@@ -630,12 +728,19 @@ void merge_elf_files() {
         return;
     }
 
-    // Cleanup
+    // Step 9: Cleanup and finish
     free(new_sections);
     close(out_fd);
-    printf("Merged ELF files successfully\n");
+    
+    if (debug_mode) {
+        printf("\nMerge completed:\n");
+        printf("- Output file: out.ro\n");
+        printf("- Section header table offset: 0x%x\n", (unsigned int)section_offset);
+        printf("- Number of sections: %d\n", elf_files[0].elf_header->e_shnum);
+    } else {
+        printf("Merged ELF files successfully\n");
+    }
 }
-
 //============================= close ===========================================
 
 // Unmaps memory region mapped by mmap and closes the file descriptor to ensure proper resource deallocation.
@@ -649,10 +754,6 @@ void unmap_and_close(ElfFile *elf_file) {
         elf_file->fd = -1;
     }
 }
-
-
-
-//====================================================================================================
 
 // Unmaps any resources and exits the program.
 void quit() {
@@ -713,6 +814,3 @@ int main() {
 
     return 0;
 }
-
-
-//gcc -m32 -o myELF_program ELFmenu.c
