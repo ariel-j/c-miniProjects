@@ -478,40 +478,78 @@ Elf32_Shdr* get_section_by_name(ElfFile* elf_file, const char* section_name) {
 
 // Writes section data to output file and returns offset where written
 off_t write_section_data(int out_fd, ElfFile* elf_file, Elf32_Shdr* section) {
+    // Get the current offset in the output file
     off_t current_offset = lseek(out_fd, 0, SEEK_CUR);
-    
-    void* section_data = (char*)elf_file->map_start + section->sh_offset;
-    ssize_t written = write(out_fd, section_data, section->sh_size);
-    
-    if (written != section->sh_size) {
+    if (current_offset == -1) {
+        perror("Failed to get current offset");
         return -1;
     }
-    
+
+    // Get the section data from the mapped memory
+    void* section_data = (char*)elf_file->map_start + section->sh_offset;
+
+    // Write the section data to the output file
+    ssize_t written = write(out_fd, section_data, section->sh_size);
+    if (written != section->sh_size) {
+        perror("Failed to write section data");
+        return -1;
+    }
+
     return current_offset;
 }
 
+
+
 // Merges corresponding sections from both files
 off_t merge_sections(int out_fd, ElfFile* file1, ElfFile* file2, 
-                    const char* section_name, Elf32_Shdr* new_section) {
+                     const char* section_name, Elf32_Shdr* new_section) {
+    // Find the section in both files
     Elf32_Shdr* section1 = get_section_by_name(file1, section_name);
     Elf32_Shdr* section2 = get_section_by_name(file2, section_name);
     
-    if (!section1) return -1;
-    
-    off_t new_offset = lseek(out_fd, 0, SEEK_CUR);
-    
-    // Write first file's section
-    if (write_section_data(out_fd, file1, section1) == -1) return -1;
-    
-    // Write second file's section if it exists
-    if (section2) {
-        if (write_section_data(out_fd, file2, section2) == -1) return -1;
-        new_section->sh_size = section1->sh_size + section2->sh_size;
-    } else {
-        new_section->sh_size = section1->sh_size;
+    if (!section1) {
+        // If the section doesn't exist in the first file, return error
+        printf("Section %s not found in first file\n", section_name);
+        return -1;
     }
     
+    // Start writing the new merged section at the current offset
+    off_t new_offset = lseek(out_fd, 0, SEEK_CUR);
+    if (new_offset == -1) {
+        perror("Failed to get current offset");
+        return -1;
+    }
+
+    // Write section from the first file
+    if (write_section_data(out_fd, file1, section1) == -1) {
+        perror("Failed to write section from first file");
+        return -1;
+    }
+
+    // If the section exists in the second file, append it
+    if (section2) {
+        if (write_section_data(out_fd, file2, section2) == -1) {
+            perror("Failed to write section from second file");
+            return -1;
+        }
+
+        // Update the size of the merged section (sum of both sections' sizes)
+        new_section->sh_size = section1->sh_size + section2->sh_size;
+    } else {
+        // Only the first file has this section
+        new_section->sh_size = section1->sh_size;
+    }
+
+    // Set the offset for the merged section
     new_section->sh_offset = new_offset;
+
+    // Debug information
+    if (debug_mode) {
+        printf("Merged section %s:\n", section_name);
+        printf("- New offset: 0x%lx\n", new_offset);
+        printf("- New size: %d bytes\n", new_section->sh_size);
+    }
+
     return new_offset;
 }
 
@@ -615,42 +653,34 @@ Elf32_Shdr* create_initial_sections(ElfFile* source_file) {
 // Processes mergeable sections (.text, .data, .rodata)
 int process_mergeable_sections(int out_fd, Elf32_Shdr* new_sections) {
     const char* mergeable_sections[] = {".text", ".data", ".rodata"};
-    
-    if (debug_mode) {
-        printf("\nProcessing mergeable sections, new_sections at %p\n", (void*)new_sections);
-    }
-    
-    for (int i = 0; i < 3; i++) {
-        if (debug_mode) {
-            printf("\nProcessing mergeable section %d: %s\n", i, mergeable_sections[i]);
+    int num_mergeable_sections = sizeof(mergeable_sections) / sizeof(mergeable_sections[0]);
+
+    for (int i = 0; i < num_mergeable_sections; i++) {
+        const char* section_name = mergeable_sections[i];
+
+        // Get the original section from the first file to calculate the index
+        Elf32_Shdr* orig_section = get_section_by_name(&elf_files[0], section_name);
+        if (!orig_section) {
+            printf("Section %s not found in first file, skipping merge\n", section_name);
+            continue;
         }
-        
-        // Get ORIGINAL section just to find its index
-        Elf32_Shdr* orig_section = get_section_by_name(&elf_files[0], mergeable_sections[i]);
-        if (orig_section) {
-            // Calculate the index
-            Elf32_Shdr* first_section = (Elf32_Shdr*)((char*)elf_files[0].map_start + 
-                                                     elf_files[0].elf_header->e_shoff);
-            size_t section_index = (orig_section - first_section);
-            
-            if (debug_mode) {
-                printf("Found section at index: %zu\n", section_index);
-                printf("Using new_sections + %zu\n", section_index);
-            }
-            
-            // Use the index with our new_sections array
-            Elf32_Shdr* new_section = &new_sections[section_index];
-            
-            off_t result = merge_sections(out_fd, &elf_files[0], &elf_files[1], 
-                                        mergeable_sections[i], new_section);
-            if (result == -1) {
-                printf("Failed to merge section: %s\n", mergeable_sections[i]);
-                return -1;
-            }
+
+        // Calculate the section index in the new section header table
+        Elf32_Shdr* first_section = (Elf32_Shdr*)((char*)elf_files[0].map_start + 
+                                                  elf_files[0].elf_header->e_shoff);
+        size_t section_index = orig_section - first_section;
+        Elf32_Shdr* new_section = &new_sections[section_index];
+
+        // Merge the sections
+        if (merge_sections(out_fd, &elf_files[0], &elf_files[1], section_name, new_section) == -1) {
+            printf("Failed to merge section: %s\n", section_name);
+            return -1;
         }
     }
+
     return 0;
 }
+
 
 // Updates symbol values from second file
 int update_symbol_values(int out_fd, Elf32_Shdr* symtab1, Elf32_Shdr* symtab2) {
@@ -658,65 +688,70 @@ int update_symbol_values(int out_fd, Elf32_Shdr* symtab1, Elf32_Shdr* symtab2) {
     Elf32_Sym* source_symbols1 = (Elf32_Sym*)((char*)elf_files[0].map_start + symtab1->sh_offset);
     Elf32_Sym* source_symbols2 = (Elf32_Sym*)((char*)elf_files[1].map_start + symtab2->sh_offset);
     
-    // Create a copy of symbol table 1
-    int sym_count = symtab1->sh_size / sizeof(Elf32_Sym);
+    int sym_count1 = symtab1->sh_size / sizeof(Elf32_Sym);
+    int sym_count2 = symtab2->sh_size / sizeof(Elf32_Sym);
+
+    // Create a copy of the first symbol table for the merged file
     Elf32_Sym* new_symbols = malloc(symtab1->sh_size);
     if (!new_symbols) {
+        perror("Failed to allocate memory for symbol table");
         return -1;
     }
     memcpy(new_symbols, source_symbols1, symtab1->sh_size);
-    
-    if (debug_mode) {
-        printf("Updating symbol table:\n");
-        printf("- Symbol count: %d\n", sym_count);
-        printf("- Table size: %d bytes\n", symtab1->sh_size);
-    }
-    
+
     // Get string tables
     Elf32_Shdr* strtab1 = &((Elf32_Shdr*)((char*)elf_files[0].map_start + 
                            elf_files[0].elf_header->e_shoff))[symtab1->sh_link];
     Elf32_Shdr* strtab2 = &((Elf32_Shdr*)((char*)elf_files[1].map_start + 
                            elf_files[1].elf_header->e_shoff))[symtab2->sh_link];
-    
+
     const char* strtab1_data = (char*)elf_files[0].map_start + strtab1->sh_offset;
     const char* strtab2_data = (char*)elf_files[1].map_start + strtab2->sh_offset;
-    
-    // Update undefined symbols
-    for (int i = 1; i < sym_count; i++) {
-        if (new_symbols[i].st_shndx != SHN_UNDEF) continue;
-        
-        const char* sym_name = strtab1_data + new_symbols[i].st_name;
-        Elf32_Sym* sym2 = find_symbol_in_table(sym_name, source_symbols2, 
-                                              symtab2->sh_size / sizeof(Elf32_Sym), 
-                                              strtab2_data);
-        
-        if (sym2 && sym2->st_shndx != SHN_UNDEF) {
-            if (debug_mode) {
-                printf("Updating symbol %s:\n", sym_name);
-                printf("- Old value: 0x%x\n", new_symbols[i].st_value);
-                printf("- New value: 0x%x\n", sym2->st_value);
+
+    // Update undefined symbols and handle multiply defined symbols
+    for (int i = 1; i < sym_count1; i++) {
+        Elf32_Sym* sym1 = &new_symbols[i];
+        if (sym1->st_shndx != SHN_UNDEF) {
+            // Symbol is already defined in the first file
+            const char* sym_name = strtab1_data + sym1->st_name;
+
+            // Search for this symbol in the second file
+            Elf32_Sym* sym2 = find_symbol_in_table(sym_name, source_symbols2, sym_count2, strtab2_data);
+
+            if (sym2 && sym2->st_shndx != SHN_UNDEF) {
+                // Both files define the symbol; retain only one definition
+                if (debug_mode) {
+                    printf("Symbol %s multiply defined; retaining first definition\n", sym_name);
+                }
+                continue;  // Skip updating this symbol
             }
-            
-            new_symbols[i].st_value = sym2->st_value;
-            new_symbols[i].st_size = sym2->st_size;
-            new_symbols[i].st_info = sym2->st_info;
-            new_symbols[i].st_shndx = sym2->st_shndx;
+        } else {
+            // Symbol is undefined in the first file; try to resolve it
+            const char* sym_name = strtab1_data + sym1->st_name;
+            Elf32_Sym* sym2 = find_symbol_in_table(sym_name, source_symbols2, sym_count2, strtab2_data);
+
+            if (sym2 && sym2->st_shndx != SHN_UNDEF) {
+                // Resolve the undefined symbol using the second file
+                sym1->st_value = sym2->st_value;
+                sym1->st_size = sym2->st_size;
+                sym1->st_info = sym2->st_info;
+                sym1->st_shndx = sym2->st_shndx;
+
+                if (debug_mode) {
+                    printf("Resolved undefined symbol %s using second file\n", sym_name);
+                }
+            }
         }
     }
-    
-    // Write updated symbol table to output file
+
+    // Write the updated symbol table to the output file
     ssize_t written = write(out_fd, new_symbols, symtab1->sh_size);
+    free(new_symbols);
+
     if (written != symtab1->sh_size) {
-        printf("Failed to write symbol table\n");
-        free(new_symbols);
+        perror("Failed to write updated symbol table");
         return -1;
     }
-    
-    if (debug_mode) {
-        printf("Successfully wrote updated symbol table\n");
-    }
-    
-    free(new_symbols);
     return 0;
 }
 
