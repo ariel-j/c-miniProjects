@@ -558,7 +558,7 @@ int copy_non_mergeable_sections(int out_fd, Elf32_Shdr* new_sections) {
             new_section->sh_size = orig_section->sh_size;
 
             if (debug_mode) {
-                fprintf(stderr, "\nUpdated section header:\n", section_index);
+                fprintf(stderr, "\nUpdated section header for section %zu:\n", section_index);
                 fprintf(stderr, "\n- New offset: 0x%x\n", (unsigned int)new_section->sh_offset);
                 fprintf(stderr, "\n- Size: %d\n", new_section->sh_size);
             }
@@ -641,77 +641,65 @@ int process_mergeable_sections(int out_fd, Elf32_Shdr* new_sections) {
 
 
 // Updates symbol values from second file
+
 int update_symbol_values(int out_fd, Elf32_Shdr* symtab1, Elf32_Shdr* symtab2) {
     // Get source symbol tables
     Elf32_Sym* source_symbols1 = (Elf32_Sym*)((char*)elf_files[0].map_start + symtab1->sh_offset);
     Elf32_Sym* source_symbols2 = (Elf32_Sym*)((char*)elf_files[1].map_start + symtab2->sh_offset);
     
-    int sym_count1 = symtab1->sh_size / sizeof(Elf32_Sym);
-    int sym_count2 = symtab2->sh_size / sizeof(Elf32_Sym);
-
-    // Create a copy of the first symbol table for the merged file
-    Elf32_Sym* new_symbols = malloc(symtab1->sh_size);
-    if (!new_symbols) {
-        perror("Failed to allocate memory for symbol table");
-        return -1;
-    }
-    memcpy(new_symbols, source_symbols1, symtab1->sh_size);
-
     // Get string tables
     Elf32_Shdr* strtab1 = &((Elf32_Shdr*)((char*)elf_files[0].map_start + 
                            elf_files[0].elf_header->e_shoff))[symtab1->sh_link];
     Elf32_Shdr* strtab2 = &((Elf32_Shdr*)((char*)elf_files[1].map_start + 
                            elf_files[1].elf_header->e_shoff))[symtab2->sh_link];
-
+    
     const char* strtab1_data = (char*)elf_files[0].map_start + strtab1->sh_offset;
     const char* strtab2_data = (char*)elf_files[1].map_start + strtab2->sh_offset;
 
-    // Update undefined symbols and handle multiply defined symbols
-    for (int i = 1; i < sym_count1; i++) {
-        Elf32_Sym* sym1 = &new_symbols[i];
-        if (sym1->st_shndx != SHN_UNDEF) {
-            // Symbol is already defined in the first file
-            const char* sym_name = strtab1_data + sym1->st_name;
+    // Create new symbol table
+    Elf32_Sym* new_symbols = malloc(symtab1->sh_size);
+    if (!new_symbols) {
+        perror("Failed to allocate memory for symbol table");
+        return -1;  // Return error code
+    }
 
-            // Search for this symbol in the second file
-            Elf32_Sym* sym2 = find_symbol_in_table(sym_name, source_symbols2, sym_count2, strtab2_data);
+    // Copy original symbols
+    memcpy(new_symbols, source_symbols1, symtab1->sh_size);
 
-            if (sym2 && sym2->st_shndx != SHN_UNDEF) {
-                // Both files define the symbol; retain only one definition
-                if (debug_mode) {
-                    fprintf(stderr, "\nSymbol %s multiply defined; retaining first definition\n", sym_name);
+    // Update undefined symbols
+    int sym_count = symtab1->sh_size / sizeof(Elf32_Sym);
+    int sym_count2 = symtab2->sh_size / sizeof(Elf32_Sym);
+
+    for (int i = 1; i < sym_count; i++) {
+        if (new_symbols[i].st_shndx == SHN_UNDEF) {
+            const char* sym_name = &strtab1_data[new_symbols[i].st_name];
+            
+            // Find matching symbol in second file
+            for (int j = 1; j < sym_count2; j++) {
+                const char* sym_name2 = &strtab2_data[source_symbols2[j].st_name];
+                if (strcmp(sym_name, sym_name2) == 0 && 
+                    source_symbols2[j].st_shndx != SHN_UNDEF) {
+                    // Found defined symbol in second file
+                    new_symbols[i].st_value = source_symbols2[j].st_value;
+                    new_symbols[i].st_size = source_symbols2[j].st_size;
+                    new_symbols[i].st_info = source_symbols2[j].st_info;
+                    new_symbols[i].st_shndx = source_symbols2[j].st_shndx;
+                    break;
                 }
-                continue;  // Skip updating this symbol
-            }
-        } else {
-            // Symbol is undefined in the first file; try to resolve it
-            const char* sym_name = strtab1_data + sym1->st_name;
-            Elf32_Sym* sym2 = find_symbol_in_table(sym_name, source_symbols2, sym_count2, strtab2_data);
-
-            if (sym2 && sym2->st_shndx != SHN_UNDEF) {
-                // Resolve the undefined symbol using the second file
-                sym1->st_value = sym2->st_value;
-                sym1->st_size = sym2->st_size;
-                sym1->st_info = sym2->st_info;
-                sym1->st_shndx = sym2->st_shndx;
-
-                if (debug_mode) 
-                    fprintf(stderr, "\nResolved undefined symbol %s using second file\n", sym_name);
             }
         }
     }
 
-    // Write the updated symbol table to the output file
+    // Write updated symbol table
     ssize_t written = write(out_fd, new_symbols, symtab1->sh_size);
     free(new_symbols);
 
     if (written != symtab1->sh_size) {
         perror("Failed to write updated symbol table");
-        return -1;
+        return -1;  // Return error code
     }
-    return 0;
+    return 0;  // Return success
 }
-
 // Writes section headers and returns offset
 off_t write_section_headers(int out_fd, Elf32_Shdr* new_sections, int num_sections) {
     if (debug_mode) {
@@ -752,58 +740,140 @@ int update_elf_header(int out_fd, Elf32_Ehdr* header, off_t section_offset) {
     return 0;
 }
 
+void check_merge_conflicts(int* has_undefined, int* has_multiply_defined) {
+    *has_undefined = 0;
+    *has_multiply_defined = 0;
+    
+    // Get symbol tables
+    Elf32_Shdr* symtab1 = find_symbol_table_section(&elf_files[0]);
+    Elf32_Shdr* symtab2 = find_symbol_table_section(&elf_files[1]);
+    
+    if (!symtab1 || !symtab2) return;
+    
+    // Get string tables
+    Elf32_Shdr* strtab1 = &((Elf32_Shdr*)((char*)elf_files[0].map_start + 
+                           elf_files[0].elf_header->e_shoff))[symtab1->sh_link];
+    Elf32_Shdr* strtab2 = &((Elf32_Shdr*)((char*)elf_files[1].map_start + 
+                           elf_files[1].elf_header->e_shoff))[symtab2->sh_link];
+    
+    const char* strtab1_data = (char*)elf_files[0].map_start + strtab1->sh_offset;
+    const char* strtab2_data = (char*)elf_files[1].map_start + strtab2->sh_offset;
+    
+    Elf32_Sym* symbols1 = (Elf32_Sym*)((char*)elf_files[0].map_start + symtab1->sh_offset);
+    Elf32_Sym* symbols2 = (Elf32_Sym*)((char*)elf_files[1].map_start + symtab2->sh_offset);
+    
+    int sym_count1 = symtab1->sh_size / sizeof(Elf32_Sym);
+    int sym_count2 = symtab2->sh_size / sizeof(Elf32_Sym);
+    
+    // Check for conflicts
+    for (int i = 1; i < sym_count1; i++) {
+        if (symbols1[i].st_name == 0) continue;  // Skip unnamed symbols
+        
+        const char* sym_name = &strtab1_data[symbols1[i].st_name];
+        Elf32_Sym* sym2 = find_symbol_in_table(sym_name, symbols2, sym_count2, strtab2_data);
+        
+        if (symbols1[i].st_shndx == SHN_UNDEF) {
+            if (!sym2 || sym2->st_shndx == SHN_UNDEF) {
+                *has_undefined = 1;
+                printf("Symbol %s undefined\n", sym_name);
+            }
+        } else if (sym2 && sym2->st_shndx != SHN_UNDEF) {
+            *has_multiply_defined = 1;
+            printf("Symbol %s multiply defined\n", sym_name);
+        }
+    }
+}
+
 // Main merge function
 void merge_elf_files() {
-    // Step 1: Validation (allowing merge even if validation fails)
-    if (!can_merge_files()) {
-        printf("Warning: Merge validation failed! Continuing anyway as per requirements...\n");
+
+       if (!validate_merge_requirements()) {
+        return;
     }
-    
-    // Step 2: Create output file
+
+    // Step 1: Define the correct section order to match reference output
+    const char* section_order[] = {
+        "",        // NULL section
+        ".text",
+        ".rel.text",
+        ".rodata", 
+        ".data",
+        ".shstrtab",
+        ".symtab",
+        ".strtab"
+    };
+    const int num_ordered_sections = sizeof(section_order) / sizeof(section_order[0]);
+
+    // ... existing validation code ...
+
+    // Step 2: Create output file and initial ELF header
     int out_fd = create_output_file();
     if (out_fd == -1) return;
 
-    // Step 3: Copy and setup initial ELF header
     Elf32_Ehdr new_header = *(elf_files[0].elf_header);
     if (write_initial_header(out_fd, &new_header) != 0) {
         close(out_fd);
         return;
     }
 
-    // Step 4: Create initial section headers
+    // Step 3: Create initial section headers array
     Elf32_Shdr* new_sections = create_initial_sections(&elf_files[0]);
     if (!new_sections) {
         close(out_fd);
         return;
     }
 
-    // Step 5: Process mergeable sections
-    if (process_mergeable_sections(out_fd, new_sections) != 0) {
-        free(new_sections);
-        close(out_fd);
-        return;
+    // Step 4: Process sections in the defined order
+    for (int i = 0; i < num_ordered_sections; i++) {
+        const char* section_name = section_order[i];
+        
+        // Find section in first file
+        Elf32_Shdr* section1 = get_section_by_name(&elf_files[0], section_name);
+        if (!section1) continue;  // Skip if section doesn't exist
+
+        // Calculate section index in original file
+        Elf32_Shdr* first_section = (Elf32_Shdr*)((char*)elf_files[0].map_start + 
+                                                  elf_files[0].elf_header->e_shoff);
+        size_t section_index = section1 - first_section;
+
+        // Get corresponding new section header
+        Elf32_Shdr* new_section = &new_sections[section_index];
+
+        if (strcmp(section_name, ".text") == 0 ||
+            strcmp(section_name, ".data") == 0 ||
+            strcmp(section_name, ".rodata") == 0) {
+            // Handle mergeable sections
+            if (merge_sections(out_fd, &elf_files[0], &elf_files[1], 
+                             section_name, new_section) == -1) {
+                printf("Failed to merge section: %s\n", section_name);
+                free(new_sections);
+                close(out_fd);
+                return;
+            }
+        } else if (strcmp(section_name, ".symtab") == 0) {
+            // Handle symbol table specially
+            Elf32_Shdr* symtab2 = find_symbol_table_section(&elf_files[1]);
+            if (symtab2 && update_symbol_values(out_fd, section1, symtab2) != 0) {
+                printf("Failed to update symbol table\n");
+                free(new_sections);
+                close(out_fd);
+                return;
+            }
+        } else {
+            // Copy non-mergeable sections as-is from first file
+            off_t new_offset = write_section_data(out_fd, &elf_files[0], section1);
+            if (new_offset == -1) {
+                printf("Failed to write section: %s\n", section_name);
+                free(new_sections);
+                close(out_fd);
+                return;
+            }
+            new_section->sh_offset = new_offset;
+            new_section->sh_size = section1->sh_size;
+        }
     }
 
-    // Step 6: Copy non-mergeable sections
-    if (copy_non_mergeable_sections(out_fd, new_sections) != 0) {
-        free(new_sections);
-        close(out_fd);
-        return;
-    }
-
-    // Step 7: Update symbol values
-    Elf32_Shdr* symtab1 = find_symbol_table_section(&elf_files[0]);
-    Elf32_Shdr* symtab2 = find_symbol_table_section(&elf_files[1]);
-    if (symtab1 && symtab2) {
-    if (update_symbol_values(out_fd, symtab1, symtab2) != 0) {
-        printf("Failed to update symbol values\n");
-        free(new_sections);
-        close(out_fd);
-        return;
-    }
-}
-
-    // Step 8: Write final section headers and update ELF header
+    // Step 5: Write final section headers
     off_t section_offset = write_section_headers(out_fd, new_sections, 
                                                elf_files[0].elf_header->e_shnum);
     if (section_offset == -1 || 
@@ -814,19 +884,12 @@ void merge_elf_files() {
         return;
     }
 
-    // Step 9: Cleanup and finish
     free(new_sections);
     close(out_fd);
-    
-    if (debug_mode) {
-        fprintf(stderr, "\nMerge completed:\n");
-        fprintf(stderr, "\n- Output file: out.ro\n");
-        fprintf(stderr, "\nS- Section header table offset: 0x%x\n", (unsigned int)section_offset);
-        fprintf(stderr, "\n- Number of sections: %d\n",  elf_files[0].elf_header->e_shnum);
-    } else {
-        printf("Merged ELF files successfully\n");
-    }
+    printf("Merged ELF files successfully\n");
 }
+
+
 //============================= close ===========================================
 
 // Unmaps memory region mapped by mmap and closes the file descriptor to ensure proper resource deallocation.
