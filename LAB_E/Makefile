@@ -1,12 +1,17 @@
-all: ELFmenu 
+all: setup myELF 
 
-ELFmenu: ELFmenu.o
-	gcc	-g	-m32	-Wall	-o	ELFmenu	ELFmenu.o
+myELF: myELF.o
+	gcc	-g	-m32	-Wall	-o	myELF	myELF.o
 
-ELFmenu.o: ELFmenu.c
-	gcc	-g	-m32	-Wall	-c	-o	ELFmenu.o	ELFmenu.c 
+myELF.o: myELF.c
+	gcc	-g	-m32	-Wall	-c	-o	myELF.o	myELF.c 
 
-.PHONY: clean
+# Setup target to copy ELF files
+setup:
+	cp ELF_file/* . 2>/dev/null || :
+
+.PHONY: clean setup
 
 clean:
-	rm -f *.o ELFmenu 
+	rm -f *.o myELF
+	rm -f F1*.o F2*.o  # Remove copied ELF files

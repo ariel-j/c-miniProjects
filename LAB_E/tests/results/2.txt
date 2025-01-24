@@ -1,0 +1,559 @@
+root@ariel:/home/arieljay/C/LAB_E# ./myELF
+
+Choose action:
+0-Toggle Debug Mode
+1-Examine ELF File
+2-Print Section Names
+3-Print Symbols
+4-Check Files for Merge
+5-Merge ELF Files
+6-Quit
+Option: 0
+Debug mode ON
+
+Choose action:
+0-Toggle Debug Mode
+1-Examine ELF File
+2-Print Section Names
+3-Print Symbols
+4-Check Files for Merge
+5-Merge ELF Files
+6-Quit
+Option: 1
+Enter ELF file name: F2a.o
+Magic: ELF
+Data: Little Endian
+Entry point: 0x0
+Section header table offset: 0x40
+Number of section headers: 6
+Size of section headers: 40
+Program header table offset: 0x0
+Number of program headers: 0
+Size of program headers: 0
+
+Choose action:
+0-Toggle Debug Mode
+1-Examine ELF File
+2-Print Section Names
+3-Print Symbols
+4-Check Files for Merge
+5-Merge ELF Files
+6-Quit
+Option: 1     
+Enter ELF file name: F2b.o
+Magic: ELF
+Data: Little Endian
+Entry point: 0x0
+Section header table offset: 0x40
+Number of section headers: 6
+Size of section headers: 40
+Program header table offset: 0x0
+Number of program headers: 0
+Size of program headers: 0
+
+Choose action:
+0-Toggle Debug Mode
+1-Examine ELF File
+2-Print Section Names
+3-Print Symbols
+4-Check Files for Merge
+5-Merge ELF Files
+6-Quit
+Option: 2
+
+Debug Info for File 1:
+Section header string table index (shstrndx): 3
+Section header table offset: 0x40
+String table offset: 0x180
+String table size: 39 bytes
+
+File 1:
+[Nr] Name              Addr       Off        Size       Type
+
+Debug: Section 0:
+  Name offset in string table: 0
+  Section offset in file: 0x0
+  Section size: 0 bytes
+[ 0]                   00000000  00000000  00000000  0
+
+Debug: Section 1:
+  Name offset in string table: 1
+  Section offset in file: 0x130
+  Section size: 30 bytes
+[ 1] .data             00000000  00000130  0000001e  1
+
+Debug: Section 2:
+  Name offset in string table: 7
+  Section offset in file: 0x150
+  Section size: 38 bytes
+[ 2] .text             00000000  00000150  00000026  1
+
+Debug: Section 3:
+  Name offset in string table: 13
+  Section offset in file: 0x180
+  Section size: 39 bytes
+[ 3] .shstrtab         00000000  00000180  00000027  3
+
+Debug: Section 4:
+  Name offset in string table: 23
+  Section offset in file: 0x1b0
+  Section size: 160 bytes
+[ 4] .symtab           00000000  000001b0  000000a0  2
+
+Debug: Section 5:
+  Name offset in string table: 31
+  Section offset in file: 0x250
+  Section size: 55 bytes
+[ 5] .strtab           00000000  00000250  00000037  3
+
+Debug Info for File 2:
+Section header string table index (shstrndx): 3
+Section header table offset: 0x40
+String table offset: 0x170
+String table size: 39 bytes
+
+File 2:
+[Nr] Name              Addr       Off        Size       Type
+
+Debug: Section 0:
+  Name offset in string table: 0
+  Section offset in file: 0x0
+  Section size: 0 bytes
+[ 0]                   00000000  00000000  00000000  0
+
+Debug: Section 1:
+  Name offset in string table: 1
+  Section offset in file: 0x130
+  Section size: 30 bytes
+[ 1] .data             00000000  00000130  0000001e  1
+
+Debug: Section 2:
+  Name offset in string table: 7
+  Section offset in file: 0x150
+  Section size: 30 bytes
+[ 2] .text             00000000  00000150  0000001e  1
+
+Debug: Section 3:
+  Name offset in string table: 13
+  Section offset in file: 0x170
+  Section size: 39 bytes
+[ 3] .shstrtab         00000000  00000170  00000027  3
+
+Debug: Section 4:
+  Name offset in string table: 23
+  Section offset in file: 0x1a0
+  Section size: 144 bytes
+[ 4] .symtab           00000000  000001a0  00000090  2
+
+Debug: Section 5:
+  Name offset in string table: 31
+  Section offset in file: 0x230
+  Section size: 47 bytes
+[ 5] .strtab           00000000  00000230  0000002f  3
+
+Choose action:
+0-Toggle Debug Mode
+1-Examine ELF File
+2-Print Section Names
+3-Print Symbols
+4-Check Files for Merge
+5-Merge ELF Files
+6-Quit
+Option: 3
+
+Debug Info for File 1:
+Symbol table size: 160 bytes
+Number of symbols: 10
+Symbol table offset: 0x1b0
+
+File 1:
+[ 0] 00000000   0 UND              
+[ 1] 00000000 65521 UND              F2a.s
+[ 2] 00000000   1 .data            
+[ 3] 00000000   2 .text            
+[ 4] 00000000   1 .data            OtherStr
+[ 5] 00000000   2 .text            my_strlen
+[ 6] 00000005   2 .text            rep1
+[ 7] 0000000e   2 .text            end_it
+[ 8] 0000000f   2 .text            print_it
+[ 9] 0000001e   2 .text            my_exit
+
+Debug Info for File 2:
+Symbol table size: 144 bytes
+Number of symbols: 9
+Symbol table offset: 0x1a0
+
+File 2:
+[ 0] 00000000   0 UND              
+[ 1] 00000000 65521 UND              F2b.s
+[ 2] 00000000   1 .data            
+[ 3] 00000000   2 .text            
+[ 4] 00000000   1 .data            OtherStr
+[ 5] 00000000   2 .text            my_strlen
+[ 6] 00000005   2 .text            rep1
+[ 7] 0000000e   2 .text            end_it
+[ 8] 0000000f   2 .text            print_it
+
+Choose action:
+0-Toggle Debug Mode
+1-Examine ELF File
+2-Print Section Names
+3-Print Symbols
+4-Check Files for Merge
+5-Merge ELF Files
+6-Quit
+Option: 4
+
+Debug: Starting merge check
+Symbol OtherStr multiply defined
+Symbol my_strlen multiply defined
+Symbol rep1 multiply defined
+Symbol end_it multiply defined
+Symbol print_it multiply defined
+Symbol OtherStr multiply defined
+Symbol my_strlen multiply defined
+Symbol rep1 multiply defined
+Symbol end_it multiply defined
+Symbol print_it multiply defined
+
+Choose action:
+0-Toggle Debug Mode
+1-Examine ELF File
+2-Print Section Names
+3-Print Symbols
+4-Check Files for Merge
+5-Merge ELF Files
+6-Quit
+Option: 5
+
+Debug: Starting ELF merge
+Debug: Created output file
+
+Debug: Creating initial section headers
+Debug: Number of sections: 6
+Debug: Section header offset: 0x40
+
+Debug: Section header details:
+Debug: Section 0:
+  - Offset: 0x0
+  - Size: 0 bytes
+  - Type: 0x0
+  - Link: 0
+  - Info: 0
+Debug: Section 1:
+  - Offset: 0x130
+  - Size: 30 bytes
+  - Type: 0x1
+  - Link: 0
+  - Info: 0
+Debug: Section 2:
+  - Offset: 0x150
+  - Size: 38 bytes
+  - Type: 0x1
+  - Link: 0
+  - Info: 0
+Debug: Section 3:
+  - Offset: 0x180
+  - Size: 39 bytes
+  - Type: 0x3
+  - Link: 0
+  - Info: 0
+Debug: Section 4:
+  - Offset: 0x1b0
+  - Size: 160 bytes
+  - Type: 0x2
+  - Link: 5
+  - Info: 4
+Debug: Section 5:
+  - Offset: 0x250
+  - Size: 55 bytes
+  - Type: 0x3
+  - Link: 0
+  - Info: 0
+
+Debug: Processing section: 
+
+Debug: Looking for section: 
+Debug: Number of sections: 6
+Debug: Section header offset: 0x40
+Debug: String table section index: 3
+Debug: String table offset: 0x180
+Debug: String table size: 39 bytes
+Debug: Section 0 name offset: 0, name: 
+Debug: Found section at index 0
+Debug: Section offset: 0x0
+Debug: Section size: 0 bytes
+
+Debug: Processing section: .text
+
+Debug: Looking for section: .text
+Debug: Number of sections: 6
+Debug: Section header offset: 0x40
+Debug: String table section index: 3
+Debug: String table offset: 0x180
+Debug: String table size: 39 bytes
+Debug: Section 0 name offset: 0, name: 
+Debug: Section 1 name offset: 1, name: .data
+Debug: Section 2 name offset: 7, name: .text
+Debug: Found section at index 2
+Debug: Section offset: 0x150
+Debug: Section size: 38 bytes
+
+Debug: Looking for section: .text
+Debug: Number of sections: 6
+Debug: Section header offset: 0x40
+Debug: String table section index: 3
+Debug: String table offset: 0x180
+Debug: String table size: 39 bytes
+Debug: Section 0 name offset: 0, name: 
+Debug: Section 1 name offset: 1, name: .data
+Debug: Section 2 name offset: 7, name: .text
+Debug: Found section at index 2
+Debug: Section offset: 0x150
+Debug: Section size: 38 bytes
+
+Debug: Looking for section: .text
+Debug: Number of sections: 6
+Debug: Section header offset: 0x40
+Debug: String table section index: 3
+Debug: String table offset: 0x170
+Debug: String table size: 39 bytes
+Debug: Section 0 name offset: 0, name: 
+Debug: Section 1 name offset: 1, name: .data
+Debug: Section 2 name offset: 7, name: .text
+Debug: Found section at index 2
+Debug: Section offset: 0x150
+Debug: Section size: 30 bytes
+
+Debug: Processing section: .rel.text
+
+Debug: Looking for section: .rel.text
+Debug: Number of sections: 6
+Debug: Section header offset: 0x40
+Debug: String table section index: 3
+Debug: String table offset: 0x180
+Debug: String table size: 39 bytes
+Debug: Section 0 name offset: 0, name: 
+Debug: Section 1 name offset: 1, name: .data
+Debug: Section 2 name offset: 7, name: .text
+Debug: Section 3 name offset: 13, name: .shstrtab
+Debug: Section 4 name offset: 23, name: .symtab
+Debug: Section 5 name offset: 31, name: .strtab
+Debug: Section .rel.text not found
+
+Debug: Processing section: .rodata
+
+Debug: Looking for section: .rodata
+Debug: Number of sections: 6
+Debug: Section header offset: 0x40
+Debug: String table section index: 3
+Debug: String table offset: 0x180
+Debug: String table size: 39 bytes
+Debug: Section 0 name offset: 0, name: 
+Debug: Section 1 name offset: 1, name: .data
+Debug: Section 2 name offset: 7, name: .text
+Debug: Section 3 name offset: 13, name: .shstrtab
+Debug: Section 4 name offset: 23, name: .symtab
+Debug: Section 5 name offset: 31, name: .strtab
+Debug: Section .rodata not found
+
+Debug: Processing section: .data
+
+Debug: Looking for section: .data
+Debug: Number of sections: 6
+Debug: Section header offset: 0x40
+Debug: String table section index: 3
+Debug: String table offset: 0x180
+Debug: String table size: 39 bytes
+Debug: Section 0 name offset: 0, name: 
+Debug: Section 1 name offset: 1, name: .data
+Debug: Found section at index 1
+Debug: Section offset: 0x130
+Debug: Section size: 30 bytes
+
+Debug: Looking for section: .data
+Debug: Number of sections: 6
+Debug: Section header offset: 0x40
+Debug: String table section index: 3
+Debug: String table offset: 0x180
+Debug: String table size: 39 bytes
+Debug: Section 0 name offset: 0, name: 
+Debug: Section 1 name offset: 1, name: .data
+Debug: Found section at index 1
+Debug: Section offset: 0x130
+Debug: Section size: 30 bytes
+
+Debug: Looking for section: .data
+Debug: Number of sections: 6
+Debug: Section header offset: 0x40
+Debug: String table section index: 3
+Debug: String table offset: 0x170
+Debug: String table size: 39 bytes
+Debug: Section 0 name offset: 0, name: 
+Debug: Section 1 name offset: 1, name: .data
+Debug: Found section at index 1
+Debug: Section offset: 0x130
+Debug: Section size: 30 bytes
+
+Debug: Processing section: .shstrtab
+
+Debug: Looking for section: .shstrtab
+Debug: Number of sections: 6
+Debug: Section header offset: 0x40
+Debug: String table section index: 3
+Debug: String table offset: 0x180
+Debug: String table size: 39 bytes
+Debug: Section 0 name offset: 0, name: 
+Debug: Section 1 name offset: 1, name: .data
+Debug: Section 2 name offset: 7, name: .text
+Debug: Section 3 name offset: 13, name: .shstrtab
+Debug: Found section at index 3
+Debug: Section offset: 0x180
+Debug: Section size: 39 bytes
+
+Debug: Processing section: .symtab
+
+Debug: Looking for section: .symtab
+Debug: Number of sections: 6
+Debug: Section header offset: 0x40
+Debug: String table section index: 3
+Debug: String table offset: 0x180
+Debug: String table size: 39 bytes
+Debug: Section 0 name offset: 0, name: 
+Debug: Section 1 name offset: 1, name: .data
+Debug: Section 2 name offset: 7, name: .text
+Debug: Section 3 name offset: 13, name: .shstrtab
+Debug: Section 4 name offset: 23, name: .symtab
+Debug: Found section at index 4
+Debug: Section offset: 0x1b0
+Debug: Section size: 160 bytes
+
+Debug: Updating symbol values
+Debug: First symtab size: 160 bytes
+Debug: Second symtab size: 144 bytes
+Debug: Processing 10 symbols
+Debug: Writing updated symbol table
+
+Debug: Processing section: .strtab
+
+Debug: Looking for section: .strtab
+Debug: Number of sections: 6
+Debug: Section header offset: 0x40
+Debug: String table section index: 3
+Debug: String table offset: 0x180
+Debug: String table size: 39 bytes
+Debug: Section 0 name offset: 0, name: 
+Debug: Section 1 name offset: 1, name: .data
+Debug: Section 2 name offset: 7, name: .text
+Debug: Section 3 name offset: 13, name: .shstrtab
+Debug: Section 4 name offset: 23, name: .symtab
+Debug: Section 5 name offset: 31, name: .strtab
+Debug: Found section at index 5
+Debug: Section offset: 0x250
+Debug: Section size: 55 bytes
+
+Debug: Writing section headers
+Debug: Number of sections: 6
+Debug: Size of each header: 40 bytes
+Debug: Total size: 240 bytes
+Debug: Writing section headers at offset 0x184
+
+Debug: Section header details before write:
+Debug: Section 0:
+  - Offset: 0x34
+  - Size: 0 bytes
+  - Type: 0x0
+  - Link: 0
+  - Info: 0
+Debug: Section 1:
+  - Offset: 0x68
+  - Size: 30 bytes
+  - Type: 0x1
+  - Link: 0
+  - Info: 0
+Debug: Section 2:
+  - Offset: 0x40
+  - Size: 38 bytes
+  - Type: 0x1
+  - Link: 0
+  - Info: 0
+Debug: Section 3:
+  - Offset: 0x86
+  - Size: 39 bytes
+  - Type: 0x3
+  - Link: 0
+  - Info: 0
+Debug: Section 4:
+  - Offset: 0xad
+  - Size: 160 bytes
+  - Type: 0x2
+  - Link: 5
+  - Info: 4
+Debug: Section 5:
+  - Offset: 0x14d
+  - Size: 55 bytes
+  - Type: 0x3
+  - Link: 0
+  - Info: 0
+Debug: Successfully wrote 240 bytes of section headers
+Debug: Merge completed successfully
+Merged ELF files successfully
+
+Choose action:
+0-Toggle Debug Mode
+1-Examine ELF File
+2-Print Section Names
+3-Print Symbols
+4-Check Files for Merge
+5-Merge ELF Files
+6-Quit
+Option: 6
+Exiting program.
+root@ariel:/home/arieljay/C/LAB_E# readelf -h -s -S out.ro
+ELF Header:
+  Magic:   7f 45 4c 46 01 01 01 00 00 00 00 00 00 00 00 00 
+  Class:                             ELF32
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              REL (Relocatable file)
+  Machine:                           Intel 80386
+  Version:                           0x1
+  Entry point address:               0x0
+  Start of program headers:          0 (bytes into file)
+  Start of section headers:          388 (bytes into file)
+  Flags:                             0x0
+  Size of this header:               52 (bytes)
+  Size of program headers:           0 (bytes)
+  Number of program headers:         0
+  Size of section headers:           40 (bytes)
+  Number of section headers:         6
+  Section header string table index: 3
+
+Section Headers:
+  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            00000000 000034 000000 00      0   0  0
+  [ 1] .data             PROGBITS        00000000 000068 00001e 00  WA  0   0  4
+  [ 2] .text             PROGBITS        00000000 000040 000026 00  AX  0   0 16
+  [ 3] .shstrtab         STRTAB          00000000 000086 000027 00      0   0  1
+  [ 4] .symtab           SYMTAB          00000000 0000ad 0000a0 10      5   4  4
+  [ 5] .strtab           STRTAB          00000000 00014d 000037 00      0   0  1
+Key to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings), I (info),
+  L (link order), O (extra OS processing required), G (group), T (TLS),
+  C (compressed), x (unknown), o (OS specific), E (exclude),
+  D (mbind), p (processor specific)
+
+Symbol table '.symtab' contains 10 entries:
+   Num:    Value  Size Type    Bind   Vis      Ndx Name
+     0: 00000000     0 NOTYPE  LOCAL  DEFAULT  UND 
+     1: 00000000     0 FILE    LOCAL  DEFAULT  ABS F2a.s
+     2: 00000000     0 SECTION LOCAL  DEFAULT    1 .data
+     3: 00000000     0 SECTION LOCAL  DEFAULT    2 .text
+     4: 00000000     0 NOTYPE  GLOBAL DEFAULT    1 OtherStr
+     5: 00000000     0 NOTYPE  GLOBAL DEFAULT    2 my_strlen
+     6: 00000005     0 NOTYPE  GLOBAL DEFAULT    2 rep1
+     7: 0000000e     0 NOTYPE  GLOBAL DEFAULT    2 end_it
+     8: 0000000f     0 NOTYPE  GLOBAL DEFAULT    2 print_it
+     9: 0000001e     0 NOTYPE  GLOBAL DEFAULT    2 my_exit
