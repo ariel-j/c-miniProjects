@@ -437,3 +437,256 @@ Continuing.
 Program received signal SIGSEGV, Segmentation fault.
 update_symbol_values (symtab1=0xf7fbd108, symtab2=0xf7fbc108) at myELF.c:681
 681	            symbols1[i].st_value = sym2->st_value;
+Already logging to gdb.txt.
+warning: Currently logging to gdb.txt.  Turn the logging off and on to make the new setting effective.
+Breakpoint 1 at 0x2b33: file myELF.c, line 653.
+Breakpoint 2 at 0x3246: file myELF.c, line 811.
+Type commands for breakpoint(s) 1, one per line.
+End with a line saying just "end".
+Starting program: /home/arieljay/C/LAB_E/myELF 
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+
+Breakpoint 2, merge_elf_files () at myELF.c:811
+811	void merge_elf_files() {
+$1 = 2
+$2 = 8
+$3 = 6
+$4 = 0x40
+Undefined command: "et".  Try "help".
+$5 = {
+  sh_name = 31,
+  sh_type = 2,
+  sh_flags = 0,
+  sh_addr = 0,
+  sh_offset = 640,
+  sh_size = 256,
+  sh_link = 6,
+  sh_info = 8,
+  sh_addralign = 4,
+  sh_entsize = 16
+}
+813	       if (!validate_merge_requirements()) {
+Note: breakpoint 1 also set at pc 0x56557b33.
+Breakpoint 3 at 0x56557b33: file myELF.c, line 653.
+Continuing.
+
+Breakpoint 1, update_symbol_values (out_fd=5, symtab1=0xf7fbd108, symtab2=0xf7fbc0e0) at myELF.c:653
+653	    Elf32_Sym* source_symbols1 = (Elf32_Sym*)((char*)elf_files[0].map_start + symtab1->sh_offset);
+$18 = {
+  sh_name = 31,
+  sh_type = 2,
+  sh_flags = 0,
+  sh_addr = 0,
+  sh_offset = 640,
+  sh_size = 256,
+  sh_link = 6,
+  sh_info = 8,
+  sh_addralign = 4,
+  sh_entsize = 16
+}
+$19 = {
+  sh_name = 23,
+  sh_type = 2,
+  sh_flags = 0,
+  sh_addr = 0,
+  sh_offset = 432,
+  sh_size = 160,
+  sh_link = 5,
+  sh_info = 4,
+  sh_addralign = 4,
+  sh_entsize = 16
+}
+$20 = 0xf7fbd280
+$21 = 0xf7fbc1b0
+0xf7fbd280:	0x00000000	0x00000000	0x00000000	0x00000000
+0xf7fbd290:	0x00000001	0x00000000	0x00000000	0xfff10004
+0xf7fbc1b0:	0x00000000	0x00000000	0x00000000	0x00000000
+0xf7fbc1c0:	0x00000001	0x00000000	0x00000000	0xfff10004
+0xf7fbd280:	0x00000000	0x00000000	0x00000000	0x00000000
+0xf7fbd290:	0x00000001	0x00000000	0x00000000	0xfff10004
+0xf7fbd2a0:	0x00000000	0x00000000	0x00000000	0x00010003
+0xf7fbd2b0:	0x00000000	0x00000000	0x00000000	0x00020003
+0xf7fbd2c0:	0x00000000	0x00000000	0x00000000	0x00030003
+0xf7fbd2d0:	0x0000004a	0x00000000	0x00000000	0x00020000
+0xf7fbd2e0:	0x00000051	0x00000000	0x00000000	0x00030000
+0xf7fbd2f0:	0x00000057	0x00000040	0x00000000	0x00010000
+$22 = 0x6
+$23 = 0x5
+654	    Elf32_Sym* source_symbols2 = (Elf32_Sym*)((char*)elf_files[1].map_start + symtab2->sh_offset);
+$24 = (Elf32_Sym *) 0xf7fbd280
+657	    Elf32_Shdr* strtab1 = &((Elf32_Shdr*)((char*)elf_files[0].map_start + 
+$25 = (Elf32_Sym *) 0xf7fbc1b0
+$26 = {
+  sh_name = 39,
+  sh_type = 3,
+  sh_flags = 0,
+  sh_addr = 0,
+  sh_offset = 896,
+  sh_size = 92,
+  sh_link = 0,
+  sh_info = 0,
+  sh_addralign = 1,
+  sh_entsize = 0
+}
+658	                           elf_files[0].elf_header->e_shoff))[symtab1->sh_link];
+$27 = (Elf32_Shdr *) 0xffffcda4
+657	    Elf32_Shdr* strtab1 = &((Elf32_Shdr*)((char*)elf_files[0].map_start + 
+$28 = 0xf7fbd040
+$29 = {
+  sh_name = 39,
+  sh_type = 3,
+  sh_flags = 0,
+  sh_addr = 0,
+  sh_offset = 896,
+  sh_size = 92,
+  sh_link = 0,
+  sh_info = 0,
+  sh_addralign = 1,
+  sh_entsize = 0
+}
+0xf7fbd380:	""
+659	    Elf32_Shdr* strtab2 = &((Elf32_Shdr*)((char*)elf_files[1].map_start + 
+$30 = (Elf32_Shdr *) 0xf7fbd130
+No symbol "you" in current context.
+0xf7fbd380:	0x00	0x46	0x31	0x61	0x2e	0x73	0x00	0x70
+0xf7fbd388:	0x72	0x69	0x6e	0x74	0x5f	0x69	0x74	0x00
+0xf7fbd390:	0x6d	0x79	0x5f	0x73	0x74	0x72	0x6c	0x65
+0xf7fbd398:	0x6e	0x00	0x6d	0x79	0x5f	0x65	0x78	0x69
+660	                           elf_files[1].elf_header->e_shoff))[symtab2->sh_link];
+$31 = (Elf32_Shdr *) 0xf7ffcb80 <_rtld_global_ro>
+$32 = (Elf32_Sym *) 0xf7fbc1b0
+0xf7fbc1b0:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0xf7fbc1b8:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0xf7fbc1c0:	0x01	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0xf7fbc1c8:	0x00	0x00	0x00	0x00	0x04	0x00	0xf1	0xff
+Breakpoint 4 at 0x56557e71: file myELF.c, line 728.
+Type commands for breakpoint(s) 4, one per line.
+End with a line saying just "end".
+Breakpoint 5 at 0x56557481: file myELF.c, line 473.
+No symbol "section_name" in current context.
+No symbol "new_offset" in current context.
+No symbol "section1" in current context.
+No symbol "section2" in current context.
+No symbol "file1" in current context.
+This command cannot be used at the top level.
+No symbol "new_sections" in current context.
+Type commands for breakpoint(s) 5, one per line.
+End with a line saying just "end".
+Note: breakpoint 2 also set at pc 0x56558246.
+Breakpoint 6 at 0x56558246: file myELF.c, line 811.
+Type commands for breakpoint(s) 6, one per line.
+End with a line saying just "end".
+Note: breakpoints 2 and 6 also set at pc 0x56558246.
+Breakpoint 7 at 0x56558246: file myELF.c, line 811.
+Starting merge_elf_files
+This command cannot be used at the top level.
+Continuing.
+
+Breakpoint 4, write_section_headers (out_fd=5, new_sections=0x5655d9c0, num_sections=8) at myELF.c:728
+728	    if (debug_mode) {
+$33 = 8
+$34 = 0xf7fbd380
+$35 = 40
+0x5655d9c0:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0x5655d9c8:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0x5655d9d0:	0x34	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0x5655d9d8:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0x5655d9e0:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+729	        fprintf(stderr, "\nWriting section headers:\n");
+$36 = 2
+730	        fprintf(stderr, "\n- Number of sections: %d\n", num_sections);
+731	        fprintf(stderr, "\n- Size of each section header: %zu\n", sizeof(Elf32_Shdr));
+732	        fprintf(stderr, "\n- Total size to write: %zu\n", sizeof(Elf32_Shdr) * num_sections);
+736	    off_t current = lseek(out_fd, 0, SEEK_CUR);
+737	    if (current == -1) {
+742	    if (debug_mode)
+743	        fprintf(stderr, "\nCurrent file offset before write: 0x%lx\n", current); 
+746	    ssize_t written = write(out_fd, new_sections, sizeof(Elf32_Shdr) * num_sections);
+747	    if (written != sizeof(Elf32_Shdr) * num_sections) {
+752	    if (debug_mode) 
+753	        fprintf(stderr, "\nSuccessfully wrote %zd bytes of section headers\n", written); 
+755	    return current;
+756	}
+merge_elf_files () at myELF.c:902
+902	    if (section_offset == -1 || 
+903	        update_elf_header(out_fd, &new_header, section_offset) != 0) {
+902	    if (section_offset == -1 || 
+910	    free(new_sections);
+911	    close(out_fd);
+912	    printf("Merged ELF files successfully\n");
+913	}
+main () at myELF.c:969
+969	    while (1) {
+970	        if(s.debug_mode) {
+974	        display_menu();
+975	        printf("Option: ");
+977	        scanf("%d", &option);
+978	        getchar();  // Consume newline character.
+Undefined command: "F1a.o".  Try "help".
+Undefined command: "1".  Try "help".
+980	        if (option >= 0 && menu[option].func != NULL) {
+981	            menu[option].func();
+969	    while (1) {
+Undefined command: "5".  Try "help".
+970	        if(s.debug_mode) {
+974	        display_menu();
+975	        printf("Option: ");
+Undefined command: "5".  Try "help".
+977	        scanf("%d", &option);
+978	        getchar();  // Consume newline character.
+980	        if (option >= 0 && menu[option].func != NULL) {
+981	            menu[option].func();
+
+Breakpoint 2, merge_elf_files () at myELF.c:811
+811	void merge_elf_files() {
+813	       if (!validate_merge_requirements()) {
+818	    const char* section_order[] = {
+828	    const int num_ordered_sections = sizeof(section_order) / sizeof(section_order[0]);
+833	    int out_fd = create_output_file();
+834	    if (out_fd == -1) return;
+836	    Elf32_Ehdr new_header = *(elf_files[0].elf_header);
+837	    if (write_initial_header(out_fd, &new_header) != 0) {
+843	    Elf32_Shdr* new_sections = create_initial_sections(&elf_files[0]);
+844	    if (!new_sections) {
+$37 = (Elf32_Shdr *) 0x5655d9c0
+0x5655d9c0:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0x5655d9c8:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0x5655d9d0:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0x5655d9d8:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+Note: breakpoint 5 also set at pc 0x56557481.
+Breakpoint 8 at 0x56557481: file myELF.c, line 473.
+Type commands for breakpoint(s) 8, one per line.
+End with a line saying just "end".
+Note: breakpoint 4 also set at pc 0x56557e71.
+Breakpoint 9 at 0x56557e71: file myELF.c, line 728.
+Type commands for breakpoint(s) 9, one per line.
+End with a line saying just "end".
+Note: breakpoints 4 and 9 also set at pc 0x56557e71.
+Breakpoint 10 at 0x56557e71: file myELF.c, line 728.
+Type commands for breakpoint(s) 10, one per line.
+End with a line saying just "end".
+850	    for (int i = 0; i < num_ordered_sections; i++) {
+851	        const char* section_name = section_order[i];
+854	        Elf32_Shdr* section1 = get_section_by_name(&elf_files[0], section_name);
+855	        if (!section1) continue;  // Skip if section doesn't exist
+858	        Elf32_Shdr* first_section = (Elf32_Shdr*)((char*)elf_files[0].map_start + 
+859	                                                  elf_files[0].elf_header->e_shoff);
+858	        Elf32_Shdr* first_section = (Elf32_Shdr*)((char*)elf_files[0].map_start + 
+Breakpoint 11 at 0x5655795f: file myELF.c, line 603.
+
+Creating initial sections
+No symbol "source_file" in current context.
+No symbol "source_file" in current context.
+No symbol "source_file" in current context.
+This command cannot be used at the top level.
+Type commands for breakpoint(s) 11, one per line.
+End with a line saying just "end".
+Note: breakpoints 5 and 8 also set at pc 0x56557481.
+Breakpoint 12 at 0x56557481: file myELF.c, line 473.
+Type commands for breakpoint(s) 12, one per line.
+End with a line saying just "end".
+Note: breakpoints 4, 9 and 10 also set at pc 0x56557e71.
+Breakpoint 13 at 0x56557e71: file myELF.c, line 728.
+Type commands for breakpoint(s) 13, one per line.
+End with a line saying just "end".
