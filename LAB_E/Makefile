@@ -14,4 +14,5 @@ setup:
 
 clean:
 	rm -f *.o myELF
+	rm -f *.ro
 	rm -f F1*.o F2*.o  # Remove copied ELF files
