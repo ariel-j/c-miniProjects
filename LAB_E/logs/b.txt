@@ -1,0 +1,59 @@
+
+Choose action:
+0-Toggle Debug Mode
+1-Examine ELF File
+2-Print Section Names
+3-Print Symbols
+4-Check Files for Merge
+5-Merge ELF Files
+6-Quit
+Option: Enter ELF file name: Magic: ELF
+Data: Little Endian
+Entry point: 0x0
+Section header table offset: 0x40
+Number of section headers: 8
+Size of section headers: 40
+Program header table offset: 0x0
+Number of program headers: 0
+Size of program headers: 0
+
+Choose action:
+0-Toggle Debug Mode
+1-Examine ELF File
+2-Print Section Names
+3-Print Symbols
+4-Check Files for Merge
+5-Merge ELF Files
+6-Quit
+Option: Enter ELF file name: Magic: ELF
+Data: Little Endian
+Entry point: 0x0
+Section header table offset: 0x40
+Number of section headers: 6
+Size of section headers: 40
+Program header table offset: 0x0
+Number of program headers: 0
+Size of program headers: 0
+
+Choose action:
+0-Toggle Debug Mode
+1-Examine ELF File
+2-Print Section Names
+3-Print Symbols
+4-Check Files for Merge
+5-Merge ELF Files
+6-Quit
+Option: Symbol my_exit undefined
+Symbol print_it multiply defined
+Symbol my_exit undefined
+Symbol print_it multiply defined
+
+Choose action:
+0-Toggle Debug Mode
+1-Examine ELF File
+2-Print Section Names
+3-Print Symbols
+4-Check Files for Merge
+5-Merge ELF Files
+6-Quit
+Option: Exiting program.
