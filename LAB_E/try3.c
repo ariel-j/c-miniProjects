@@ -427,6 +427,35 @@ void check_files_for_merge() {
 }
 
 //==================================== 3.2 ==============================
+
+typedef struct {
+    char* strtab;
+    size_t strtab_size;
+    char* shstrtab;
+    size_t shstrtab_size;
+} StringTables;
+
+// Helper function to copy string tables
+StringTables copy_string_tables(ElfFile* file) {
+    StringTables tables = {0};
+    Elf32_Shdr* sections = (Elf32_Shdr*)((char*)file->map_start + file->elf_header->e_shoff);
+
+    // Get section header string table
+    tables.shstrtab = (char*)file->map_start + sections[file->elf_header->e_shstrndx].sh_offset;
+    tables.shstrtab_size = sections[file->elf_header->e_shstrndx].sh_size;
+
+    // Find symbol string table
+    for (int i = 0; i < file->elf_header->e_shnum; i++) {
+        if (sections[i].sh_type == SHT_STRTAB && 
+            strcmp(tables.shstrtab + sections[i].sh_name, ".strtab") == 0) {
+            tables.strtab = (char*)file->map_start + sections[i].sh_offset;
+            tables.strtab_size = sections[i].sh_size;
+            break;
+        }
+    }
+    return tables;
+}
+
 void merge_elf_files() {
     if (!validate_merge_requirements()) return;
 
@@ -434,8 +463,7 @@ void merge_elf_files() {
     ElfFile* file2 = &elf_files[1];
     Elf32_Ehdr* header1 = file1->elf_header;
     Elf32_Shdr* sections1 = (Elf32_Shdr*)((char*)file1->map_start + header1->e_shoff);
-    Elf32_Shdr* shstrtab_hdr = &sections1[header1->e_shstrndx];
-    char* shstrtab = (char*)file1->map_start + shstrtab_hdr->sh_offset;
+    StringTables strings1 = copy_string_tables(file1);
 
     int out_fd = open("out.ro", O_RDWR | O_CREAT | O_TRUNC, 0644);
     if (out_fd == -1) {
@@ -443,14 +471,13 @@ void merge_elf_files() {
         return;
     }
 
-    // Write ELF header
+    // Copy ELF header
     Elf32_Ehdr new_header = *header1;
     write(out_fd, &new_header, sizeof(Elf32_Ehdr));
     off_t current_offset = sizeof(Elf32_Ehdr);
-    current_offset = (current_offset + 15) & ~15;
 
-    // Allocate section headers
-    Elf32_Shdr* new_sections = malloc(header1->e_shnum * sizeof(Elf32_Shdr));
+    // Allocate and initialize section headers
+    Elf32_Shdr* new_sections = calloc(header1->e_shnum, sizeof(Elf32_Shdr));
     if (!new_sections) {
         perror("Failed to allocate section headers");
         close(out_fd);
@@ -464,73 +491,83 @@ void merge_elf_files() {
             current_offset = (current_offset + new_sections[i].sh_addralign - 1) 
                            & ~(new_sections[i].sh_addralign - 1);
         }
+
         new_sections[i].sh_offset = current_offset;
-        char* name = shstrtab + sections1[i].sh_name;
-        
+        const char* section_name = strings1.shstrtab + sections1[i].sh_name;
+
         if (debug_mode) {
-            fprintf(stderr, "Debug: Processing section %d (%s)\n", i, name);
+            fprintf(stderr, "Debug: Processing section %d (%s)\n", i, section_name);
         }
 
-        // Handle mergeable sections
-        if (sections1[i].sh_type == SHT_PROGBITS) {
+        if (sections1[i].sh_type == SHT_PROGBITS && (
+            strcmp(section_name, ".text") == 0 || 
+            strcmp(section_name, ".data") == 0 || 
+            strcmp(section_name, ".rodata") == 0)) {
+            
+            // Merge content
             write(out_fd, (char*)file1->map_start + sections1[i].sh_offset, sections1[i].sh_size);
             size_t total_size = sections1[i].sh_size;
-            
+
+            // Find matching section in second file
             Elf32_Shdr* sections2 = (Elf32_Shdr*)((char*)file2->map_start + file2->elf_header->e_shoff);
-            char* shstrtab2 = (char*)file2->map_start + 
-                             sections2[file2->elf_header->e_shstrndx].sh_offset;
+            StringTables strings2 = copy_string_tables(file2);
 
             for (int j = 0; j < file2->elf_header->e_shnum; j++) {
-                if (sections2[j].sh_type != SHT_PROGBITS) continue;
-                if (strcmp(name, shstrtab2 + sections2[j].sh_name) == 0) {
-                    write(out_fd, (char*)file2->map_start + sections2[j].sh_offset, 
+                const char* name2 = strings2.shstrtab + sections2[j].sh_name;
+                if (strcmp(section_name, name2) == 0) {
+                    write(out_fd, (char*)file2->map_start + sections2[j].sh_offset,
                           sections2[j].sh_size);
                     total_size += sections2[j].sh_size;
                     break;
                 }
             }
             new_sections[i].sh_size = total_size;
-            
+
         } else if (sections1[i].sh_type == SHT_SYMTAB) {
-            // Process symbol table
+            // Copy and update symbol table
             Elf32_Sym* symtab1 = (Elf32_Sym*)((char*)file1->map_start + sections1[i].sh_offset);
-            Elf32_Shdr* strtab1 = &sections1[sections1[i].sh_link];
-            char* strtab1_data = (char*)file1->map_start + strtab1->sh_offset;
-            
             int sym_count = sections1[i].sh_size / sizeof(Elf32_Sym);
-            Elf32_Sym* new_symtab = malloc(sections1[i].sh_size);
+
+            Elf32_Sym* new_symtab = calloc(sym_count, sizeof(Elf32_Sym));
             if (!new_symtab) {
                 perror("Failed to allocate symbol table");
                 goto cleanup;
             }
             memcpy(new_symtab, symtab1, sections1[i].sh_size);
 
+            // Get second file symbol table
             Elf32_Shdr* sections2 = (Elf32_Shdr*)((char*)file2->map_start + file2->elf_header->e_shoff);
-            for (int j = 0; j < file2->elf_header->e_shnum; j++) {
-                if (sections2[j].sh_type == SHT_SYMTAB) {
-                    Elf32_Sym* symtab2 = (Elf32_Sym*)((char*)file2->map_start + sections2[j].sh_offset);
-                    Elf32_Shdr* strtab2 = &sections2[sections2[j].sh_link];
-                    char* strtab2_data = (char*)file2->map_start + strtab2->sh_offset;
-                    int sym_count2 = sections2[j].sh_size / sizeof(Elf32_Sym);
+            StringTables strings2 = copy_string_tables(file2);
 
-                    // Update symbol values
-                    for (int k = 1; k < sym_count; k++) {
-                        if (new_symtab[k].st_shndx != SHN_UNDEF) continue;
-                        char* sym_name = strtab1_data + new_symtab[k].st_name;
-                        
-                        for (int m = 1; m < sym_count2; m++) {
-                            char* sym_name2 = strtab2_data + symtab2[m].st_name;
-                            if (strcmp(sym_name, sym_name2) == 0 && 
-                                symtab2[m].st_shndx != SHN_UNDEF) {
-                                new_symtab[k] = symtab2[m];
-                                if (symtab2[m].st_shndx == 1) {  // .text section
-                                    new_symtab[k].st_value += sections1[1].sh_size;
-                                }
-                                break;
+            for (int j = 0; j < file2->elf_header->e_shnum; j++) {
+                if (sections2[j].sh_type != SHT_SYMTAB) continue;
+
+                Elf32_Sym* symtab2 = (Elf32_Sym*)((char*)file2->map_start + sections2[j].sh_offset);
+                int sym_count2 = sections2[j].sh_size / sizeof(Elf32_Sym);
+
+                // Update undefined symbols
+                for (int k = 1; k < sym_count; k++) {
+                    if (new_symtab[k].st_shndx != SHN_UNDEF) continue;
+
+                    const char* sym_name = strings1.strtab + new_symtab[k].st_name;
+                    for (int m = 1; m < sym_count2; m++) {
+                        const char* sym_name2 = strings2.strtab + symtab2[m].st_name;
+                        if (strcmp(sym_name, sym_name2) == 0 && 
+                            symtab2[m].st_shndx != SHN_UNDEF) {
+                            // Copy all symbol information
+                            new_symtab[k].st_info = symtab2[m].st_info;
+                            new_symtab[k].st_other = symtab2[m].st_other;
+                            new_symtab[k].st_shndx = symtab2[m].st_shndx;
+                            new_symtab[k].st_value = symtab2[m].st_value;
+                            new_symtab[k].st_size = symtab2[m].st_size;
+
+                            // Adjust value for merged sections
+                            if (symtab2[m].st_shndx == 1) {  // .text
+                                new_symtab[k].st_value += sections1[1].sh_size;
                             }
+                            break;
                         }
                     }
-                    break;
                 }
             }
 
@@ -538,23 +575,23 @@ void merge_elf_files() {
             free(new_symtab);
             new_sections[i].sh_size = sections1[i].sh_size;
 
+        } else if (sections1[i].sh_type == SHT_STRTAB) {
+            // Copy string table
+            write(out_fd, (char*)file1->map_start + sections1[i].sh_offset,
+                  sections1[i].sh_size);
+            new_sections[i].sh_size = sections1[i].sh_size;
+
         } else {
-            write(out_fd, (char*)file1->map_start + sections1[i].sh_offset, sections1[i].sh_size);
+            // Copy section as-is
+            write(out_fd, (char*)file1->map_start + sections1[i].sh_offset,
+                  sections1[i].sh_size);
             new_sections[i].sh_size = sections1[i].sh_size;
         }
-
-        // Update section attributes
-        new_sections[i].sh_type = sections1[i].sh_type;
-        new_sections[i].sh_flags = sections1[i].sh_flags;
-        new_sections[i].sh_link = sections1[i].sh_link;
-        new_sections[i].sh_info = sections1[i].sh_info;
-        new_sections[i].sh_addralign = sections1[i].sh_addralign;
-        new_sections[i].sh_entsize = sections1[i].sh_entsize;
 
         current_offset += new_sections[i].sh_size;
     }
 
-    // Write final headers
+    // Write section headers
     new_header.e_shoff = current_offset;
     lseek(out_fd, 0, SEEK_SET);
     write(out_fd, &new_header, sizeof(Elf32_Ehdr));
@@ -563,10 +600,9 @@ void merge_elf_files() {
     write(out_fd, new_sections, header1->e_shnum * sizeof(Elf32_Shdr));
 
 cleanup:
-    if (new_sections) free(new_sections);
+    free(new_sections);
     close(out_fd);
 }
-
 
 //============================= close ===========================================
 
