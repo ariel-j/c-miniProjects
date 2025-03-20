@@ -1,50 +1,67 @@
-# C Programming Learning Repository
+# C Programming Miniprojects
 
-This repository contains my work and progress in learning C programming, primarily through hands-on labs and assignments. It covers foundational concepts of C programming, including working with Unix-based systems, debugging, file handling, character encoding, and more. Below, you will find an overview of the skills acquired in Lab 1 and Lab A, as well as what you can expect from the code and tests present in this repository.
+## Overview
 
-## Skills Acquired
+This repository contains a collection of miniprojects that demonstrate my proficiency in systems programming using C. Throughout these projects, I've gained hands-on experience with low-level programming concepts, from basic character manipulation to more advanced topics like ELF file parsing, memory management, and process manipulation.
 
-### Lab 1: Introduction to C Programming and Debugging
-- **Command-Line Arguments**: Gained an understanding of how to handle command-line arguments in C, parsing them with `argc` and `argv`.
-- **File I/O**: Learned how to handle file input and output, using `fopen()`, `fgetc()`, `fputc()`, and `fclose()`.
-- **Character Encoding**: Implemented a simple character encoder, learning how to manipulate and encode text based on a key, and how to wrap around ASCII values for uppercase, lowercase letters, and digits.
-- **Debugging Mode**: Developed a basic debugging mechanism that prints the program’s internal state to `stderr` when enabled, helping with troubleshooting.
-- **Standard Input and Output**: Gained experience with the standard input (`stdin`), output (`stdout`), and error (`stderr`) streams in Unix/Linux.
-- **Makefile**: Learned to use `make` to automate compilation and cleaning up of project files, streamlining the development process.
+## Key Projects
 
-### Lab A: Implementing an Encoder
-- **Parsing and Handling Command-Line Flags**: Extended knowledge of parsing command-line arguments by handling flags like `-i`, `-o`, `-D`, and `+E` for input, output, debug mode, and encoding operations.
-- **Custom Encoding Mechanism**: Implemented a character encoding scheme that adds or subtracts values to characters based on a cyclic key.
-- **File Handling**: Used file pointers to read from and write to specified files, supporting dynamic input/output files via command-line arguments.
-- **Efficient Debugging**: Integrated robust debugging capabilities into the program, allowing easy tracking of argument processing and internal states.
-- **Code Efficiency and Quality**: Focused on code readability and maintaining best practices, ensuring the program can handle different edge cases gracefully.
+### 1. Encoder
+A command-line utility that performs character encoding based on custom patterns. This tool demonstrates:
+- Parsing command-line arguments
+- Character manipulation through ASCII encoding
+- File I/O operations with proper error handling
+- Implementation of debug modes for development
 
-## Code Overview
+### 2. Shell Implementation
+A custom Unix-like shell that supports:
+- Command execution with forking and process management
+- Background and foreground process control
+- Signal handling (SIGTSTP, SIGINT, SIGCONT)
+- Built-in commands (cd, history)
+- I/O redirection and basic pipe implementation
+- Job control capabilities
 
-### Encoder Program
-The main program (`encoder.c`) implements a simple character encoder, which can encode text based on a given encoding key. The program reads from `stdin` by default, but it can also handle custom input files using the `-i` flag and output files with the `-o` flag.
+### 3. Assembly Programming
+Projects demonstrating my ability to work with assembly language:
+- Direct system call implementation
+- Multi-precision integer arithmetic
+- Pseudo-random number generation
+- Memory management through dynamic allocation
 
-- **Encoding Key**: The program accepts an encoding key via the `+E{key}` or `-E{key}` flag. The key consists of digits that will be added or subtracted to/from the ASCII values of characters in the input text.
-- **Debugging Mode**: The `-D` and `+D` flags toggle the debug mode, which prints each command-line argument and helps debug internal states.
-- **File Input/Output**: Supports reading from and writing to files, specified by `-i` for input file and `-o` for output file.
-- **Character Handling**: Only encodes alphanumeric characters (digits, uppercase, and lowercase letters). Non-alphanumeric characters are passed through unchanged.
-- **Makefile**: A `makefile` is provided to build the project with `make encoder` and clean up with `make clean`.
+### 4. ELF File Manipulation
+Tools for working with ELF (Executable and Linkable Format) files:
+- Hexadecimal editor for binary files
+- ELF header and section parsing
+- Symbol table manipulation
+- File patching and modification
 
-### Testing
-The repository includes comprehensive test cases for the encoder program, covering various scenarios like:
-- Default encoding behavior (no encoding key).
-- Encoding with both addition and subtraction keys.
-- Handling of uppercase, lowercase, and digit characters.
-- Debug mode output to track program flow.
+### 5. Custom Loader
+Implementation of a program loader that:
+- Parses ELF program headers
+- Maps program segments to memory
+- Sets up appropriate memory protections
+- Transfers control to loaded executables
 
-## Expected Behavior
-When you run the program with appropriate command-line arguments, it will:
-1. Parse the command-line arguments to configure the encoding behavior, debugging mode, and input/output files.
-2. Read characters from the specified input (or `stdin` by default).
-3. Encode each character based on the provided key, outputting the result to `stdout` or a specified output file.
-4. If in debug mode, it will print the parsed arguments and internal states to `stderr`.
+## Skills Demonstrated
 
-### Example Commands:
-1. **Simple Encoding** (adding values to characters):
-   ```bash
-   ./encoder +E12345
+- **Low-level programming**: Direct manipulation of memory, pointers, and registers
+- **Systems programming**: Understanding of OS concepts (processes, file descriptors, signals)
+- **Memory management**: Proper allocation, manipulation, and freeing of memory
+- **Binary manipulation**: Reading and writing binary files at the byte level
+- **Process management**: Creation, control, and monitoring of processes
+- **ELF format understanding**: Parsing and manipulating executable files
+- **Assembly integration**: Writing and calling assembly functions from C
+
+## Tools and Techniques
+
+- C programming with strict memory management
+- Make-based build systems
+- Assembly language (NASM)
+- System calls for direct OS interaction
+- File I/O and memory mapping
+- Process control primitives
+- Signal handling
+- ELF file structures
+
+This collection represents my journey through systems programming, demonstrating my ability to work with low-level concepts and implement efficient, robust solutions in C.

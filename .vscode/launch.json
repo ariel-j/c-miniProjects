@@ -8,13 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-<<<<<<< HEAD
-      "cwd": "/home/arieljay/LAB_1",
-      "program": "/home/arieljay/LAB_1/build/Debug/outDebug",
-=======
-      "cwd": "/home/arieljay/LAB_A",
-      "program": "/home/arieljay/LAB_A/build/Debug/outDebug",
->>>>>>> LAB_A
+      "cwd": "/home/arieljay/C/ELF Linker (E)",
+      "program": "/home/arieljay/C/ELF Linker (E)/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
