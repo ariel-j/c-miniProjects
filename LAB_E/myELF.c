@@ -847,7 +847,7 @@ int update_symbol_values(int out_fd, Elf32_Shdr* symtab1, Elf32_Shdr* symtab2) {
                         fprintf(stderr, "Debug: Resolving symbol %s\n", sym_name);
                     }
 
-                    // REPLACE THIS PART
+                    // REPLACE THIS PART?
                     if (source_symbols2[j].st_shndx == text_idx2) {
                         new_symbols[i].st_shndx = text_idx1;
                         new_symbols[i].st_value = source_symbols2[j].st_value + text_offset;
